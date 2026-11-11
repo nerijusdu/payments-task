@@ -1,0 +1,30 @@
+{
+  "name": "@payments/payments-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/shared/db/migrate.ts",
+    "db:seed": "tsx src/shared/db/seed.ts"
+  },
+  "dependencies": {
+    "@payments/config": "workspace:*",
+    "@payments/contracts": "workspace:*",
+    "drizzle-orm": "^0.44.0",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "pino": "^9.6.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.31.0",
+    "tsx": "^4.19.2"
+  }
+}
