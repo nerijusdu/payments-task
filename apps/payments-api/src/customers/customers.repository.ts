@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '../shared/db/client.js';
-import { customers } from '../shared/db/schema.js';
+import { customers, providerCustomers } from '../shared/db/schema.js';
 
 export type Customer = typeof customers.$inferSelect;
 
@@ -32,5 +32,27 @@ export class CustomersRepository {
 			))
 			.limit(1);
 		return row ?? null;
+	}
+
+	async findProviderCustomerId(customerId: string, providerId: string): Promise<string | null> {
+		const [row] = await this.db
+			.select()
+			.from(providerCustomers)
+			.where(and(
+				eq(providerCustomers.customerId, customerId),
+				eq(providerCustomers.providerId, providerId),
+			))
+			.limit(1);
+		return row?.providerCustomerId ?? null;
+	}
+
+	async insertProviderCustomer(
+		customerId: string,
+		providerId: string,
+		providerCustomerId: string,
+	): Promise<void> {
+		await this.db
+			.insert(providerCustomers)
+			.values({ customerId, providerId, providerCustomerId });
 	}
 }

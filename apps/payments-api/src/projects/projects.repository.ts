@@ -55,6 +55,21 @@ export class ProjectsRepository {
 		return row ?? null;
 	}
 
+	async findProjectProvider(
+		projectId: string,
+		providerId: string,
+	): Promise<ProjectProvider | null> {
+		const [row] = await this.db
+			.select()
+			.from(projectProviders)
+			.where(and(
+				eq(projectProviders.projectId, projectId),
+				eq(projectProviders.providerId, providerId),
+			))
+			.limit(1);
+		return row ?? null;
+	}
+
 	async upsertProjectProvider(
 		projectId: string,
 		providerId: string,

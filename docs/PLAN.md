@@ -400,8 +400,8 @@ Adapter requests and responses, `NormalizedWebhookEvent` (type, providerEventId,
 2. (done) `packages/contracts`: DTOs, adapter contract, `NormalizedWebhookEvent`, `EventQueue` interface
 3. (done) `packages/queue`: `PgBossQueue`, `InMemoryQueue`, factory
 4. (done) `apps/payments-api` shared db and the `projects`, `customers`, `plans` features: Drizzle schema, initial migration, seed for a project and mock provider
-5. `apps/psp-adapter`: Drizzle schema for `provider_credentials`, crypto helper, `credentials` feature, `PaymentProvider` interface, registry, mock provider, `payments`, `subscriptions`, `refunds` features
-6. `apps/payments-api`: `payments` feature (controller, service, repository, adapter client), idempotency, state machine, provider configuration flow in `projects`
+5. (done)`apps/psp-adapter`: Drizzle schema for `provider_credentials`, crypto helper, `credentials` feature, `PaymentProvider` interface, registry, mock provider, `payments`, `subscriptions`, `refunds` features
+6. (done) `apps/payments-api`: `payments` feature (controller, service, repository, adapter client), idempotency, state machine, provider configuration flow in `projects`
 7. Inbound webhooks: adapter `webhooks` feature (verify, normalize, publish), payments-api `webhook-events` feature (dedup, transition)
 8. `subscriptions` feature and `checkout` feature
 9. `outbound-webhooks` feature

@@ -1,15 +1,36 @@
 import { Router } from 'express';
-import { CreateProjectDto } from '@payments/contracts';
+import { ConfigureProviderDto, CreateProjectDto } from '@payments/contracts';
 import { asyncHandler, parseBody } from '@payments/http';
 import type { ProjectsService } from './projects.service.js';
 
-/** Admin-token routes. Provider configuration is added with the payments flow. */
+/** Admin-token routes. Bodies of the provider routes carry secrets and are never logged. */
 export function projectsExternalController(service: ProjectsService): Router {
 	const router = Router();
 
 	router.post('/', asyncHandler(async (req, res) => {
 		const dto = parseBody(CreateProjectDto, req.body);
 		res.status(201).json(await service.create(dto));
+	}));
+
+	router.put('/:projectId/providers/:providerCode', asyncHandler(async (req, res) => {
+		const dto = parseBody(ConfigureProviderDto, req.body);
+		const saved = await service.configureProvider(
+			req.params.projectId!,
+			req.params.providerCode!,
+			dto,
+		);
+		res.json({
+			providerCode: req.params.providerCode,
+			isEnabled: saved.isEnabled,
+			sortOrder: saved.sortOrder,
+			supportedMethods: saved.supportedMethods,
+			currencies: saved.currencies,
+		});
+	}));
+
+	router.delete('/:projectId/providers/:providerCode', asyncHandler(async (req, res) => {
+		await service.removeProvider(req.params.projectId!, req.params.providerCode!);
+		res.status(204).end();
 	}));
 
 	return router;
