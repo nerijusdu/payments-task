@@ -8,26 +8,26 @@ The deliverable is a design plus a small MVP: schema, DTOs, endpoints, and a wor
 
 ## 2. Decisions
 
-| Area | Decision |
-|---|---|
-| Language / HTTP | TypeScript, Express (Node 20+) |
-| Monorepo | pnpm workspaces |
-| Database | PostgreSQL, Drizzle ORM, `drizzle-kit` migrations |
-| DB ownership | Each app owns its own DB access. No shared db package |
-| App structure | Feature-based folders. Each feature has controller(s), service, repository, with worker and provider files optional |
-| Database | One Postgres instance, separate schemas: `payments` (payments-api), `adapter` (psp-adapter), `pgboss` (queue). Each app uses its own role limited to its schema |
-| Services | Two: `payments-api` and `psp-adapter`. No separate webhook receiver |
-| Validation | Zod, schemas shared via `contracts`, types inferred |
-| Queue | pg-boss, behind an `EventQueue` interface |
-| PSP integration | Standalone HTTP service (`psp-adapter`) that owns PSP credentials |
-| First PSP | Generic mock adapter (v1). Stripe later |
-| Logging | pino with correlation IDs |
-| Config | Env vars validated with Zod |
-| Credential ownership | `psp-adapter` stores PSP credentials and webhook secrets (encrypted) in its own schema. Credentials are entered through payments-api project configuration, which forwards them to the adapter in transit only and never stores or logs them |
-| Credential encryption | AES-256-GCM, key from env (`CREDENTIALS_ENC_KEY`) held by psp-adapter only. Key version stored per value. KMS later |
-| Money | Integer minor units, ISO 4217 currency |
-| Local dev | docker-compose: postgres plus the services |
-| Tests | Deferred out of v1 (see section 10) |
+| Area                  | Decision                                                                                                                                                                                                                                     |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Language / HTTP       | TypeScript, Express (Node 20+)                                                                                                                                                                                                               |
+| Monorepo              | pnpm workspaces                                                                                                                                                                                                                              |
+| Database              | PostgreSQL, Drizzle ORM, `drizzle-kit` migrations                                                                                                                                                                                            |
+| DB ownership          | Each app owns its own DB access. No shared db package                                                                                                                                                                                        |
+| App structure         | Feature-based folders. Each feature has controller(s), service, repository, with worker and provider files optional                                                                                                                          |
+| Database              | One Postgres instance, separate schemas: `payments` (payments-api), `adapter` (psp-adapter), `pgboss` (queue). Each app uses its own role limited to its schema                                                                              |
+| Services              | Two: `payments-api` and `psp-adapter`. No separate webhook receiver                                                                                                                                                                          |
+| Validation            | Zod, schemas shared via `contracts`, types inferred                                                                                                                                                                                          |
+| Queue                 | pg-boss, behind an `EventQueue` interface                                                                                                                                                                                                    |
+| PSP integration       | Standalone HTTP service (`psp-adapter`) that owns PSP credentials                                                                                                                                                                            |
+| First PSP             | Generic mock adapter (v1). Stripe later                                                                                                                                                                                                      |
+| Logging               | pino with correlation IDs                                                                                                                                                                                                                    |
+| Config                | Env vars validated with Zod                                                                                                                                                                                                                  |
+| Credential ownership  | `psp-adapter` stores PSP credentials and webhook secrets (encrypted) in its own schema. Credentials are entered through payments-api project configuration, which forwards them to the adapter in transit only and never stores or logs them |
+| Credential encryption | AES-256-GCM, key from env (`CREDENTIALS_ENC_KEY`) held by psp-adapter only. Key version stored per value. KMS later                                                                                                                          |
+| Money                 | Integer minor units, ISO 4217 currency                                                                                                                                                                                                       |
+| Local dev             | docker-compose: postgres plus the services                                                                                                                                                                                                   |
+| Tests                 | Deferred out of v1 (see section 10)                                                                                                                                                                                                          |
 
 ## 3. Architecture
 
@@ -45,6 +45,7 @@ Project backend / checkout page
 ```
 
 ### payments-api (core)
+
 - Single owner of the business database: projects, provider config, customers, plans, payments, subscriptions, refunds, webhook log.
 - Organized by feature (see section 4).
 - Stores only business-side provider config (enabled, order, methods, currencies). Never persists or logs PSP secrets and holds no encryption key.
@@ -53,6 +54,7 @@ Project backend / checkout page
 - Workers: `webhook-events` (dedup, apply state transition on already-normalized events) and `outbound-webhooks` (signed delivery to project backends with retries).
 
 ### psp-adapter
+
 - Owns its own schema (`adapter`, Drizzle, own migrations) containing PSP credentials and webhook secrets, encrypted with AES-256-GCM. Only the adapter holds the encryption key.
 - One provider class per PSP behind a single `PaymentProvider` interface and a registry keyed by `providerCode`.
 - **Outbound calls:** payments-api sends `projectId`, `providerCode` and the unified request. The adapter loads and decrypts that project's credentials, calls the PSP, and returns a unified response. Internal network only, shared service token (MVP).
@@ -62,11 +64,13 @@ Project backend / checkout page
 - Uses Postgres for its own tables and, via `packages/queue`, for pg-boss (restricted access to the `pgboss` schema, no migrations).
 
 ### Communication
+
 - payments-api to psp-adapter: synchronous HTTP with timeouts and limited retries. The idempotency key is forwarded to the PSP.
 - psp-adapter to payments-api: asynchronous normalized events via the queue only. No synchronous calls back.
 - payments-api to project backends: outbound webhooks via the queue.
 
 ### Trade-offs
+
 - Provider config is split: business settings live in payments-api (`project_providers`), secrets in the adapter (`provider_credentials`). They can drift (provider enabled but no credentials).
 - Saving a provider config is a two-step operation: first the adapter saves the credentials, then payments-api saves `project_providers`. If step 2 fails, the credentials are orphaned but harmless, and the call can be retried (the adapter save is an idempotent upsert). The adapter returns `CREDENTIALS_NOT_FOUND` if a provider is used without credentials.
 - Because secrets pass through payments-api, it must keep them out of logs, error traces and the idempotency or audit stores. Request body logging is disabled on the configuration endpoints.
@@ -158,6 +162,7 @@ docker-compose.yml
 ```
 
 File roles:
+
 - **`*.external-controller.ts`:** endpoints called from outside the system: project backends, operators and PSPs. Reachable from outside the network, so every route must authenticate its caller. The auth scheme is declared per route group by middleware:
   - project backends: API key
   - operators (project and plan configuration): admin token
@@ -165,12 +170,14 @@ File roles:
 - **`*.internal-controller.ts`:** endpoints for service-to-service calls only (payments-api calling psp-adapter). Service-token auth, on the internal network, never routed publicly.
 
 Naming note: `external` / `internal` describes the network boundary, which is what decides exposure and auth. `public` was avoided because it suggests unauthenticated access. Controllers are not split further by caller type. If an app later grows many admin-only endpoints, an `*.admin-controller.ts` can be added.
+
 - **`*.service.ts`:** business logic and orchestration. Calls its own repository and other features' services. No Express or Drizzle types.
 - **`*.repository.ts`:** the only place that runs queries for that feature's tables. Returns plain domain objects.
 - **`*.worker.ts`:** queue consumer, thin, delegates to the service.
 - Controllers only parse and validate input (Zod from `contracts`), call one service method, and map the response. No business logic, no DB access.
 
 Rules:
+
 - A feature owns its tables. Other features go through its service, never its repository.
 - Dependencies point inward: controller to service to repository or provider. Wiring is manual constructor injection in `main.ts`.
 - Cross-feature calls are service to service. If two features start depending on each other in both directions, extract the shared logic or use an event.
@@ -193,11 +200,19 @@ export interface PublishOptions {
   retryLimit?: number;
   retryBackoff?: boolean;
 }
-export interface QueueMessage<T> { id: string; data: T; attempt: number }
+export interface QueueMessage<T> {
+  id: string;
+  data: T;
+  attempt: number;
+}
 
 export interface EventQueue {
   publish<T>(queue: QueueName, payload: T, opts?: PublishOptions): Promise<string | null>;
-  subscribe<T>(queue: QueueName, handler: (msg: QueueMessage<T>) => Promise<void>, opts?: SubscribeOptions): Promise<void>;
+  subscribe<T>(
+    queue: QueueName,
+    handler: (msg: QueueMessage<T>) => Promise<void>,
+    opts?: SubscribeOptions,
+  ): Promise<void>;
   start(): Promise<void>;
   stop(): Promise<void>;
 }
@@ -215,30 +230,31 @@ export interface EventQueue {
 
 ### Schema `payments` (owned by payments-api)
 
-| Table | Key columns | Purpose |
-|---|---|---|
-| `projects` | id, name, api_key_hash, webhook_url, webhook_secret | A consumer of the service |
-| `providers` | id, code, name, is_active | Catalog of supported PSPs |
-| `project_providers` | id, project_id, provider_id, is_enabled, sort_order, supported_methods, currencies | Per-project PSP combination (business config only, no secrets). Drives checkout. Unique (project_id, provider_id) |
-| `customers` | id, project_id, external_ref, email | Our identity of the project's end user. Unique (project_id, external_ref) |
-| `provider_customers` | id, customer_id, provider_id, provider_customer_id | The same person's ID inside a PSP. Indexed on (provider_id, provider_customer_id) for webhook lookups |
-| `plans` | id, project_id, code, name, amount, currency, interval, interval_count, trial_days | Catalog template |
-| `plan_provider_mappings` | plan_id, provider_id, provider_price_id | PSP-side price or plan IDs |
-| `subscriptions` | id, project_id, customer_id, plan_id, provider_id, provider_subscription_id, status, amount and currency snapshot, current_period_start/end, cancel_at_period_end, canceled_at | A customer's instance of a plan, with its own lifecycle |
-| `payments` | id, project_id, customer_id, provider_id, subscription_id (nullable), amount, currency, status, provider_payment_id, idempotency_key, metadata JSONB, created_at | One-time and recurring charges. Unique (project_id, idempotency_key) |
-| `refunds` | id, payment_id, amount, status, provider_refund_id, reason | Refunds |
-| `webhook_events` | id, provider_id, provider_event_id, payload, status, received_at, processed_at, error | Inbound log. Unique (provider_id, provider_event_id) gives dedup |
-| `outbound_webhooks` | id, project_id, event_type, payload, status, attempts, last_error, delivered_at | Delivery log. pg-boss handles retries |
+| Table                    | Key columns                                                                                                                                                                    | Purpose                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `projects`               | id, name, api_key_hash, webhook_url, webhook_secret                                                                                                                            | A consumer of the service                                                                                         |
+| `providers`              | id, code, name, is_active                                                                                                                                                      | Catalog of supported PSPs                                                                                         |
+| `project_providers`      | id, project_id, provider_id, is_enabled, sort_order, supported_methods, currencies                                                                                             | Per-project PSP combination (business config only, no secrets). Drives checkout. Unique (project_id, provider_id) |
+| `customers`              | id, project_id, external_ref, email                                                                                                                                            | Our identity of the project's end user. Unique (project_id, external_ref)                                         |
+| `provider_customers`     | id, customer_id, provider_id, provider_customer_id                                                                                                                             | The same person's ID inside a PSP. Indexed on (provider_id, provider_customer_id) for webhook lookups             |
+| `plans`                  | id, project_id, code, name, amount, currency, interval, interval_count, trial_days                                                                                             | Catalog template                                                                                                  |
+| `plan_provider_mappings` | plan_id, provider_id, provider_price_id                                                                                                                                        | PSP-side price or plan IDs                                                                                        |
+| `subscriptions`          | id, project_id, customer_id, plan_id, provider_id, provider_subscription_id, status, amount and currency snapshot, current_period_start/end, cancel_at_period_end, canceled_at | A customer's instance of a plan, with its own lifecycle                                                           |
+| `payments`               | id, project_id, customer_id, provider_id, subscription_id (nullable), amount, currency, status, provider_payment_id, idempotency_key, metadata JSONB, created_at               | One-time and recurring charges. Unique (project_id, idempotency_key)                                              |
+| `refunds`                | id, payment_id, amount, status, provider_refund_id, reason                                                                                                                     | Refunds                                                                                                           |
+| `webhook_events`         | id, provider_id, provider_event_id, payload, status, received_at, processed_at, error                                                                                          | Inbound log. Unique (provider_id, provider_event_id) gives dedup                                                  |
+| `outbound_webhooks`      | id, project_id, event_type, payload, status, attempts, last_error, delivered_at                                                                                                | Delivery log. pg-boss handles retries                                                                             |
 
 ### Schema `adapter` (owned by psp-adapter)
 
-| Table | Key columns | Purpose |
-|---|---|---|
+| Table                  | Key columns                                                                                                             | Purpose                                                                                               |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `provider_credentials` | id, project_id, provider_code, credentials (encrypted), webhook_secret (encrypted), key_version, created_at, rotated_at | Per-project PSP secrets. Unique (project_id, provider_code). Written only via the credentials feature |
 
 `project_id` and `provider_code` are plain identifiers, not foreign keys, because the tables belong to different apps and schemas. Each app's DB role can only access its own schema.
 
 Relationships:
+
 - project 1..N project_providers N..1 providers
 - project 1..N customers, plans, subscriptions, payments
 - customer 1..N provider_customers
@@ -247,6 +263,7 @@ Relationships:
 - payment 1..N refunds
 
 Notes:
+
 - `customers` vs `provider_customers`: our identity vs the PSP-side identity. One customer can exist in several PSPs.
 - `plans` vs `subscriptions`: catalog template vs an instance with its own lifecycle. Subscriptions snapshot price terms at creation.
 - An ER diagram in Mermaid will be added to the README.
@@ -348,6 +365,7 @@ Adapter requests and responses, `NormalizedWebhookEvent` (type, providerEventId,
 ## 10. Scope
 
 ### Essential for v1
+
 - Project API-key auth (hashed keys) and per-project isolation
 - Idempotency keys on create endpoints
 - Webhook signature verification (in the adapter), dedup (in payments-api), and retry-safe processing
@@ -360,6 +378,7 @@ Adapter requests and responses, `NormalizedWebhookEvent` (type, providerEventId,
 - Basic reconciliation job for stale pending payments
 
 ### Deferred (nice to have)
+
 - **Automated tests** (adapter contract tests, webhook replay, idempotency, state transitions). Deliberately deferred from v1.
 - Stripe adapter (first real PSP after the mock)
 - Smart routing and failover between PSPs
