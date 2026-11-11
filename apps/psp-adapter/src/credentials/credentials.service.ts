@@ -1,6 +1,6 @@
+import { credentialsNotFound } from '../shared/errors/adapter-errors.js';
 import type { CredentialEnvelope } from '../providers/payment-provider.js';
 import type { CredentialCipher } from '../shared/crypto/credential-cipher.js';
-import { AppError } from '../shared/errors/errors.js';
 import type { CredentialsKey, CredentialsRepository } from './credentials.repository.js';
 
 export class CredentialsService {
@@ -35,7 +35,7 @@ export class CredentialsService {
 	/** Decrypts for in-process use only; never exposed through a controller. */
 	async load(key: CredentialsKey): Promise<CredentialEnvelope> {
 		const row = await this.repository.find(key);
-		if (!row) throw AppError.credentialsNotFound(key.projectId, key.providerCode);
+		if (!row) throw credentialsNotFound(key.projectId, key.providerCode);
 		const decrypt = (ciphertext: string) =>
 			this.cipher.decrypt({ ciphertext, keyVersion: row.keyVersion });
 		return {

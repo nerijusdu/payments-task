@@ -1,6 +1,7 @@
 import express from 'express';
 import { z } from 'zod';
 import { baseConfigShape, env, loadConfig } from '@payments/config';
+import { correlationMiddleware, createLogger, errorHandler, tokenAuth } from '@payments/http';
 import { CredentialsRepository } from './credentials/credentials.repository.js';
 import { CredentialsService } from './credentials/credentials.service.js';
 import { credentialsInternalController } from './credentials/credentials.internal-controller.js';
@@ -12,11 +13,8 @@ import { RefundsService } from './refunds/refunds.service.js';
 import { refundsInternalController } from './refunds/refunds.internal-controller.js';
 import { SubscriptionsService } from './subscriptions/subscriptions.service.js';
 import { subscriptionsInternalController } from './subscriptions/subscriptions.internal-controller.js';
-import { serviceAuth } from './shared/auth/service-auth.js';
 import { CredentialCipher } from './shared/crypto/credential-cipher.js';
 import { createDb } from './shared/db/client.js';
-import { errorHandler } from './shared/errors/error-handler.js';
-import { correlationMiddleware, createLogger } from './shared/logging/logger.js';
 
 const config = loadConfig(z.object({
 	...baseConfigShape,
@@ -49,7 +47,7 @@ app.get('/health', (_req, res) => {
 });
 
 const internal = express.Router();
-internal.use(serviceAuth(config.SERVICE_TOKEN));
+internal.use(tokenAuth('x-service-token', config.SERVICE_TOKEN));
 internal.use(
 	'/internal/projects/:projectId/providers/:providerCode',
 	credentialsInternalController(credentialsService),

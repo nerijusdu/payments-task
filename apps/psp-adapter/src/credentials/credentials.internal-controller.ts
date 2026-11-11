@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { SaveCredentialsRequest } from '@payments/contracts';
-import { asyncHandler } from '../shared/errors/async-handler.js';
-import { parseBody } from '../shared/errors/parse.js';
+import { asyncHandler, parseBody } from '@payments/http';
 import type { CredentialsService } from './credentials.service.js';
 
 /** Service-token routes, mounted under /internal/projects/:projectId/providers/:providerCode. */

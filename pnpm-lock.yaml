@@ -232,6 +232,9 @@ importers:
       '@payments/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@payments/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(@types/pg@8.23.1)(pg@8.23.1)
@@ -269,6 +272,9 @@ importers:
       '@payments/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@payments/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(@types/pg@8.23.1)(pg@8.23.1)
@@ -309,6 +315,25 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.25.76
+
+  packages/http:
+    dependencies:
+      '@payments/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      express:
+        specifier: ^4.21.2
+        version: 4.22.3(supports-color@7.2.0)
+      pino:
+        specifier: ^9.6.0
+        version: 9.14.0
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@types/express':
+        specifier: ^4.17.21
+        version: 4.17.25
 
   packages/queue:
     dependencies:

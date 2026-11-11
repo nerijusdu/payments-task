@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { CreateProjectDto } from '@payments/contracts';
-import { asyncHandler } from '../shared/errors/async-handler.js';
-import { parseBody } from '../shared/errors/parse.js';
+import { asyncHandler, parseBody } from '@payments/http';
 import type { ProjectsService } from './projects.service.js';
 
 /** Admin-token routes. Provider configuration is added with the payments flow. */

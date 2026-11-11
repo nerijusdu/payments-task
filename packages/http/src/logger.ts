@@ -13,7 +13,7 @@ declare global {
 }
 
 export function createLogger(level: string) {
-	return pino({ level, redact: ['req.headers.authorization', 'req.headers["x-service-token"]'] });
+	return pino({ level, redact: ['req.headers.authorization', 'req.headers["x-admin-token"]', 'req.headers["x-service-token"]'] });
 }
 
 export function correlationMiddleware(logger: ReturnType<typeof createLogger>): RequestHandler {

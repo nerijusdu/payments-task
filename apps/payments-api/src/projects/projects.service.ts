@@ -1,6 +1,6 @@
 import type { CreateProjectDto, CreateProjectResponseDto } from '@payments/contracts';
+import { AppError } from '@payments/http';
 import { generateApiKey, generateWebhookSecret, hashApiKey } from '../shared/auth/api-keys.js';
-import { AppError } from '../shared/errors/errors.js';
 import type {
 	Project, ProjectProviderConfig, ProjectsRepository, Provider, ProviderQuery,
 } from './projects.repository.js';

@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { AdapterCreatePaymentRequest } from '@payments/contracts';
-import { asyncHandler } from '../shared/errors/async-handler.js';
-import { parseBody } from '../shared/errors/parse.js';
+import { asyncHandler, parseBody } from '@payments/http';
 import type { PaymentsService } from './payments.service.js';
 
 /** Service-token routes, mounted under /v1/:providerCode/payments. */

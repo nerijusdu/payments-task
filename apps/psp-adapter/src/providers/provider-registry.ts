@@ -1,4 +1,4 @@
-import { AppError } from '../shared/errors/errors.js';
+import { AppError } from '@payments/http';
 import type { PaymentProvider } from './payment-provider.js';
 
 export class ProviderRegistry {

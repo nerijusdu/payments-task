@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { CreatePlanDto } from '@payments/contracts';
-import { asyncHandler } from '../shared/errors/async-handler.js';
-import { parseBody } from '../shared/errors/parse.js';
+import { asyncHandler, parseBody } from '@payments/http';
 import type { PlansService } from './plans.service.js';
 
 /** Admin-token routes, mounted under /v1/admin/projects/:projectId/plans. */

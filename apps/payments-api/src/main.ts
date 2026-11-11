@@ -1,10 +1,8 @@
 import express from 'express';
 import { z } from 'zod';
 import { baseConfigShape, env, loadConfig } from '@payments/config';
+import { correlationMiddleware, createLogger, errorHandler, tokenAuth } from '@payments/http';
 import { createDb } from './shared/db/client.js';
-import { adminAuth } from './shared/auth/admin-auth.js';
-import { errorHandler } from './shared/errors/error-handler.js';
-import { correlationMiddleware, createLogger } from './shared/logging/logger.js';
 import { ProjectsRepository } from './projects/projects.repository.js';
 import { ProjectsService } from './projects/projects.service.js';
 import { projectsExternalController } from './projects/projects.external-controller.js';
@@ -33,7 +31,7 @@ app.get('/health', (_req, res) => {
 });
 
 const admin = express.Router();
-admin.use(adminAuth(config.ADMIN_TOKEN));
+admin.use(tokenAuth('x-admin-token', config.ADMIN_TOKEN));
 admin.use('/projects', projectsExternalController(projectsService));
 admin.use('/projects/:projectId/plans', plansExternalController(plansService));
 app.use('/v1/admin', admin);

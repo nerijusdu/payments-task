@@ -1,5 +1,5 @@
 import type { CreatePlanDto } from '@payments/contracts';
-import { AppError } from '../shared/errors/errors.js';
+import { AppError } from '@payments/http';
 import type { ProjectsService } from '../projects/projects.service.js';
 import type { Plan, PlansRepository } from './plans.repository.js';
 
