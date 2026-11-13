@@ -76,6 +76,10 @@ export class ProjectsService {
 		return this.repo.upsertProvider(code, name);
 	}
 
+	findById(id: string): Promise<Project | null> {
+		return this.repo.find({ id });
+	}
+
 	findProvider(query: ProviderQuery): Promise<Provider | null> {
 		return this.repo.findProvider(query);
 	}

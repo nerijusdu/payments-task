@@ -1,12 +1,20 @@
 import type {
-	AdminListPaymentsQuery, CreatePaymentDto, PaymentResponseDto,
+	AdminListPaymentsQuery, CreatePaymentDto, OutboundEventType, PaymentResponseDto,
 } from '@payments/contracts';
 import { AppError } from '@payments/http';
+import type { OutboundWebhooksService } from '../outbound-webhooks/outbound-webhooks.service.js';
 import type { CustomersService } from '../customers/customers.service.js';
 import type { ProjectsService } from '../projects/projects.service.js';
 import type { AdapterClient } from '../shared/adapter-client/adapter-client.js';
 import type { Payment, PaymentsRepository } from './payments.repository.js';
 import { assertTransition } from './payments.state-machine.js';
+
+const OUTBOUND_EVENT_BY_STATUS: Partial<Record<Payment['status'], OutboundEventType>> = {
+	succeeded: 'payment.succeeded',
+	failed: 'payment.failed',
+	canceled: 'payment.canceled',
+	refunded: 'payment.refunded',
+};
 
 export class PaymentsService {
 	constructor(
@@ -14,6 +22,7 @@ export class PaymentsService {
 		private readonly projects: ProjectsService,
 		private readonly customers: CustomersService,
 		private readonly adapter: AdapterClient,
+		private readonly outbound: OutboundWebhooksService,
 	) { }
 
 	async create(
@@ -108,6 +117,9 @@ export class PaymentsService {
 		if (!updated) {
 			throw new AppError('INVALID_STATE_TRANSITION', 409, 'Payment changed concurrently');
 		}
+		if (payment.status !== to) {
+			await this.notifyProject(updated);
+		}
 		return updated;
 	}
 
@@ -126,6 +138,17 @@ export class PaymentsService {
 			throw AppError.notFound(`Payment not found: ${providerPaymentId}`);
 		}
 		return this.transition(payment, status);
+	}
+
+	private async notifyProject(payment: Payment): Promise<void> {
+		const type = OUTBOUND_EVENT_BY_STATUS[payment.status];
+		if (!type) {
+			return;
+		}
+		const provider = await this.projects.findProvider({ id: payment.providerId });
+		await this.outbound.enqueue(payment.projectId, type, {
+			payment: this.toResponse(payment, provider?.code ?? 'unknown'),
+		});
 	}
 
 	private async submitToProvider(

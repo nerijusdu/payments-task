@@ -1,8 +1,11 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import type { Logger } from 'pino';
 import { z } from 'zod';
 import { PaymentStatus, RefundStatus, SubscriptionStatus } from '@payments/contracts';
 import { AppError } from '@payments/http';
 import type {
+	EventQueue,
+	WebhookEventsMessage,
 	NormalizedWebhookEvent,
 	AdapterCancelSubscriptionRequest,
 	AdapterCreatePaymentRequest,
@@ -14,23 +17,52 @@ import type {
 } from '@payments/contracts';
 import type { PaymentProvider, ProviderContext, RawWebhook } from '../payment-provider.js';
 
+const COMPLETE_AFTER_MS = 2000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Generic mock PSP: no network calls, every payment asks the customer to follow a redirect. */
 export class MockProvider implements PaymentProvider {
 	readonly code = 'mock';
 
+	constructor(
+		private readonly queue: EventQueue,
+		private readonly logger: Logger,
+	) { }
+
 	async createPayment(
 		_ctx: ProviderContext,
 		req: AdapterCreatePaymentRequest,
 	): Promise<AdapterPaymentResponse> {
 		const providerPaymentId = `mock_pay_${randomUUID()}`;
+		this.completeLater(req, providerPaymentId);
 		return {
 			providerPaymentId,
 			providerCustomerId: req.customer.providerCustomerId ?? `mock_cus_${randomUUID()}`,
 			status: 'requires_action',
 			action: { type: 'redirect', url: mockCheckoutUrl(req.returnUrl, providerPaymentId) },
 		};
+	}
+
+	/** Simulates the customer finishing the redirect: publishes `succeeded` after a delay. */
+	private completeLater(req: AdapterCreatePaymentRequest, providerPaymentId: string): void {
+		const timer = setTimeout(() => {
+			const message: WebhookEventsMessage = {
+				event: {
+					type: 'payment.updated',
+					providerCode: this.code,
+					projectId: req.projectId,
+					providerEventId: `mock_evt_${randomUUID()}`,
+					providerObjectId: providerPaymentId,
+					status: 'succeeded',
+					amount: req.amount,
+					currency: req.currency,
+					occurredAt: new Date().toISOString(),
+				},
+			};
+			this.queue.publish('webhook-events', message, { retryLimit: 5, retryBackoff: true })
+				.catch((err) => this.logger.error({ err, providerPaymentId }, 'mock completion failed'));
+		}, COMPLETE_AFTER_MS);
+		timer.unref();
 	}
 
 	async createSubscription(

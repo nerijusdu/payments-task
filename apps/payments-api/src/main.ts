@@ -10,6 +10,9 @@ import { createEventQueue } from '@payments/queue';
 import { WebhookEventsRepository } from './webhook-events/webhook-events.repository.js';
 import { WebhookEventsService } from './webhook-events/webhook-events.service.js';
 import { startWebhookEventsWorker } from './webhook-events/webhook-events.worker.js';
+import { OutboundWebhooksRepository } from './outbound-webhooks/outbound-webhooks.repository.js';
+import { OutboundWebhooksService } from './outbound-webhooks/outbound-webhooks.service.js';
+import { startOutboundWebhooksWorker } from './outbound-webhooks/outbound-webhooks.worker.js';
 import { createDb } from './shared/db/client.js';
 import { ProjectsRepository } from './projects/projects.repository.js';
 import { ProjectsService } from './projects/projects.service.js';
@@ -47,18 +50,25 @@ const adapterClient = new AdapterClient({
 });
 const projectsService = new ProjectsService(new ProjectsRepository(db), adapterClient);
 const customersService = new CustomersService(new CustomersRepository(db));
-const paymentsService = new PaymentsService(
-	new PaymentsRepository(db),
-	projectsService,
-	customersService,
-	adapterClient,
-);
 const queue = createEventQueue({
 	driver: config.QUEUE_DRIVER,
 	connectionString: config.QUEUE_DATABASE_URL ?? config.DATABASE_URL,
 	schema: config.QUEUE_SCHEMA,
 	manageSchema: true,
 });
+const outboundWebhooksService = new OutboundWebhooksService(
+	new OutboundWebhooksRepository(db),
+	projectsService,
+	queue,
+	logger,
+);
+const paymentsService = new PaymentsService(
+	new PaymentsRepository(db),
+	projectsService,
+	customersService,
+	adapterClient,
+	outboundWebhooksService,
+);
 const webhookEventsService = new WebhookEventsService(
 	new WebhookEventsRepository(db),
 	projectsService,
@@ -67,6 +77,7 @@ const webhookEventsService = new WebhookEventsService(
 );
 await queue.start();
 await startWebhookEventsWorker(queue, webhookEventsService);
+await startOutboundWebhooksWorker(queue, outboundWebhooksService);
 const plansService = new PlansService(new PlansRepository(db), projectsService);
 
 const app = express();

@@ -409,7 +409,7 @@ Adapter requests and responses, `NormalizedWebhookEvent` (type, providerEventId,
 6. (done) `apps/payments-api`: `payments` feature (controller, service, repository, adapter client), idempotency, state machine, provider configuration flow in `projects`
 7. (done) Inbound webhooks: adapter `webhooks` feature (verify, normalize, publish), payments-api `webhook-events` feature (dedup, transition)
 8. `subscriptions` feature and `checkout` feature
-9. `outbound-webhooks` feature
+9. (done) `outbound-webhooks` feature
 
 ## 12. Open questions for discussion
 

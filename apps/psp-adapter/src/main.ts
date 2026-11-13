@@ -44,7 +44,7 @@ const queue = createEventQueue({
 	manageSchema: false,
 });
 await queue.start();
-const registry = new ProviderRegistry([new MockProvider()]);
+const registry = new ProviderRegistry([new MockProvider(queue, logger)]);
 const credentialsService = new CredentialsService(new CredentialsRepository(db), cipher);
 const paymentsService = new PaymentsService(registry, credentialsService);
 const subscriptionsService = new SubscriptionsService(registry, credentialsService);
