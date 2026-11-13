@@ -29,7 +29,9 @@ export class WebhooksService {
 			headers: input.headers,
 			webhookSecret,
 		});
-		if (!event) return;
+		if (!event) {
+			return;
+		}
 
 		const message: WebhookEventsMessage = { event };
 		await this.queue.publish('webhook-events', message, {

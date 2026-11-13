@@ -47,9 +47,13 @@ export class ProjectsService {
 		providerCode: string,
 		config: ProjectProviderConfig,
 	) {
-		if (!await this.repo.find({ id: projectId })) throw AppError.notFound('Project not found');
+		if (!await this.repo.find({ id: projectId })) {
+			throw AppError.notFound('Project not found');
+		}
 		const provider = await this.repo.findProvider({ code: providerCode });
-		if (!provider?.isActive) throw AppError.notFound(`Unknown provider: ${providerCode}`);
+		if (!provider?.isActive) {
+			throw AppError.notFound(`Unknown provider: ${providerCode}`);
+		}
 		return this.repo.upsertProjectProvider(projectId, provider.id, config);
 	}
 
@@ -60,17 +64,25 @@ export class ProjectsService {
 	 */
 	async configureProvider(projectId: string, providerCode: string, dto: ConfigureProviderDto) {
 		const { credentials, webhookSecret, ...config } = dto;
-		if (!await this.repo.find({ id: projectId })) throw AppError.notFound('Project not found');
+		if (!await this.repo.find({ id: projectId })) {
+			throw AppError.notFound('Project not found');
+		}
 		const provider = await this.repo.findProvider({ code: providerCode });
-		if (!provider?.isActive) throw AppError.notFound(`Unknown provider: ${providerCode}`);
+		if (!provider?.isActive) {
+			throw AppError.notFound(`Unknown provider: ${providerCode}`);
+		}
 		await this.adapter.saveCredentials(projectId, providerCode, { credentials, webhookSecret });
 		return this.repo.upsertProjectProvider(projectId, provider.id, config);
 	}
 
 	async removeProvider(projectId: string, providerCode: string): Promise<void> {
-		if (!await this.repo.find({ id: projectId })) throw AppError.notFound('Project not found');
+		if (!await this.repo.find({ id: projectId })) {
+			throw AppError.notFound('Project not found');
+		}
 		const provider = await this.repo.findProvider({ code: providerCode });
-		if (!provider) throw AppError.notFound(`Unknown provider: ${providerCode}`);
+		if (!provider) {
+			throw AppError.notFound(`Unknown provider: ${providerCode}`);
+		}
 		await this.repo.deleteProjectProvider(projectId, provider.id);
 		await this.adapter.deleteCredentials(projectId, providerCode);
 	}

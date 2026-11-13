@@ -22,7 +22,9 @@ export class CustomersService {
 		providerId: string,
 		providerCustomerId: string,
 	): Promise<void> {
-		if (await this.repo.findProviderCustomerId(customerId, providerId)) return;
+		if (await this.repo.findProviderCustomerId(customerId, providerId)) {
+			return;
+		}
 		await this.repo.insertProviderCustomer(customerId, providerId, providerCustomerId);
 	}
 }

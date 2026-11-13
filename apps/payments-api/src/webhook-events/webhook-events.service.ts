@@ -19,7 +19,9 @@ export class WebhookEventsService {
 	 */
 	async process(event: NormalizedWebhookEvent): Promise<void> {
 		const provider = await this.projects.findProvider({ code: event.providerCode });
-		if (!provider) throw AppError.notFound(`Unknown provider: ${event.providerCode}`);
+		if (!provider) {
+			throw AppError.notFound(`Unknown provider: ${event.providerCode}`);
+		}
 
 		const row = await this.repo.insertIfAbsent({
 			providerId: provider.id,

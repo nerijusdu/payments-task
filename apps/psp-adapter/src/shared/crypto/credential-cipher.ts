@@ -13,7 +13,9 @@ export class CredentialCipher {
 	constructor(keys: Record<number, string>, private readonly currentVersion: number) {
 		for (const [version, key] of Object.entries(keys)) {
 			const buf = Buffer.from(key, 'base64');
-			if (buf.length !== 32) throw new Error(`Encryption key v${version} must be 32 bytes`);
+			if (buf.length !== 32) {
+				throw new Error(`Encryption key v${version} must be 32 bytes`);
+			}
 			this.keys.set(Number(version), buf);
 		}
 		if (!this.keys.has(currentVersion)) {
@@ -31,7 +33,9 @@ export class CredentialCipher {
 
 	decrypt(value: EncryptedValue): string {
 		const key = this.keys.get(value.keyVersion);
-		if (!key) throw new Error(`No encryption key for version ${value.keyVersion}`);
+		if (!key) {
+			throw new Error(`No encryption key for version ${value.keyVersion}`);
+		}
 		const raw = Buffer.from(value.ciphertext, 'base64');
 		const decipher = createDecipheriv('aes-256-gcm', key, raw.subarray(0, 12));
 		decipher.setAuthTag(raw.subarray(12, 28));

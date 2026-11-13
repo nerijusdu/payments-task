@@ -15,9 +15,13 @@ declare global {
 export function apiKeyAuth(projects: ProjectsService): RequestHandler {
 	return (req, _res, next) => {
 		const apiKey = req.header('x-api-key');
-		if (!apiKey) return next(AppError.unauthorized());
+		if (!apiKey) {
+			return next(AppError.unauthorized());
+		}
 		projects.find({ apiKey }).then((project) => {
-			if (!project) return next(AppError.unauthorized());
+			if (!project) {
+				return next(AppError.unauthorized());
+			}
 			req.projectId = project.id;
 			next();
 		}, next);

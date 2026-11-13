@@ -81,12 +81,16 @@ export class AdapterClient {
 	private async call(opts: CallOptions): Promise<unknown> {
 		let lastError: unknown;
 		for (let attempt = 0; attempt <= this.retries; attempt++) {
-			if (attempt > 0) await sleep(100 * 2 ** (attempt - 1));
+			if (attempt > 0) {
+				await sleep(100 * 2 ** (attempt - 1));
+			}
 			try {
 				return await this.once(opts);
 			} catch (err) {
 				lastError = err;
-				if (!isRetryable(err)) throw err;
+				if (!isRetryable(err)) {
+					throw err;
+				}
 			}
 		}
 		throw lastError;
@@ -94,9 +98,15 @@ export class AdapterClient {
 
 	private async once(opts: CallOptions): Promise<unknown> {
 		const headers: Record<string, string> = { 'x-service-token': this.options.serviceToken };
-		if (opts.body !== undefined) headers['content-type'] = 'application/json';
-		if (opts.idempotencyKey) headers['idempotency-key'] = opts.idempotencyKey;
-		if (opts.correlationId) headers[CORRELATION_ID_HEADER] = opts.correlationId;
+		if (opts.body !== undefined) {
+			headers['content-type'] = 'application/json';
+		}
+		if (opts.idempotencyKey) {
+			headers['idempotency-key'] = opts.idempotencyKey;
+		}
+		if (opts.correlationId) {
+			headers[CORRELATION_ID_HEADER] = opts.correlationId;
+		}
 
 		let res: Response;
 		try {
@@ -110,9 +120,13 @@ export class AdapterClient {
 			throw new RetryableError('psp-adapter is unreachable or timed out');
 		}
 
-		if (res.status === 204) return undefined;
+		if (res.status === 204) {
+			return undefined;
+		}
 		const json: unknown = await res.json().catch(() => undefined);
-		if (res.ok) return json;
+		if (res.ok) {
+			return json;
+		}
 
 		const err = ErrorResponse.safeParse(json);
 		if (res.status >= 500 && !err.success) {

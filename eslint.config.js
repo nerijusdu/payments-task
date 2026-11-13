@@ -14,6 +14,8 @@ export default tseslint.config(
 	}),
 	{
 		rules: {
+			'curly': ['error', 'all'],
+			'@stylistic/brace-style': ['error', '1tbs', { allowSingleLine: false }],
 			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
 			'@stylistic/max-len': ['error', { code: 100, ignoreStrings: true, ignoreComments: true }],
 		},

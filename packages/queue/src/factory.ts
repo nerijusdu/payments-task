@@ -10,7 +10,9 @@ export interface CreateQueueOptions {
 }
 
 export function createEventQueue(opts: CreateQueueOptions): EventQueue {
-	if (opts.driver === 'memory') return new InMemoryQueue();
+	if (opts.driver === 'memory') {
+		return new InMemoryQueue();
+	}
 	if (!opts.connectionString) {
 		throw new Error('connectionString is required for the pgboss queue driver');
 	}

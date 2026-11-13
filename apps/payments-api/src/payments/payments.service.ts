@@ -53,7 +53,9 @@ export class PaymentsService {
 				metadata: dto.metadata,
 			}) ?? await this.repo.find({ projectId, idempotencyKey });
 		}
-		if (!payment) throw new AppError('INTERNAL_ERROR', 500, 'Payment could not be created');
+		if (!payment) {
+			throw new AppError('INTERNAL_ERROR', 500, 'Payment could not be created');
+		}
 
 		if (payment.providerId !== provider.id || payment.amount !== dto.amount
 			|| payment.currency !== dto.currency) {
@@ -75,15 +77,21 @@ export class PaymentsService {
 
 	async get(projectId: string, id: string): Promise<PaymentResponseDto> {
 		const payment = await this.repo.find({ projectId, id });
-		if (!payment) throw AppError.notFound('Payment not found');
+		if (!payment) {
+			throw AppError.notFound('Payment not found');
+		}
 		const provider = await this.projects.findProvider({ id: payment.providerId });
 		return this.toResponse(payment, provider?.code ?? 'unknown');
 	}
 
 	/** Moves a payment along the state machine; used by the payment flow and webhook handling. */
 	async transition(payment: Payment, to: Payment['status'], providerPaymentId?: string) {
-		if (payment.status === to && providerPaymentId === undefined) return payment;
-		if (payment.status !== to) assertTransition(payment.status, to);
+		if (payment.status === to && providerPaymentId === undefined) {
+			return payment;
+		}
+		if (payment.status !== to) {
+			assertTransition(payment.status, to);
+		}
 		const updated = await this.repo.updateStatus(
 			payment.id,
 			payment.status,
@@ -107,7 +115,9 @@ export class PaymentsService {
 		status: Payment['status'],
 	): Promise<Payment> {
 		const payment = await this.repo.find({ projectId, providerId, providerPaymentId });
-		if (!payment) throw AppError.notFound(`Payment not found: ${providerPaymentId}`);
+		if (!payment) {
+			throw AppError.notFound(`Payment not found: ${providerPaymentId}`);
+		}
 		return this.transition(payment, status);
 	}
 

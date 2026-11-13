@@ -35,7 +35,9 @@ export class CredentialsService {
 	/** Decrypts for in-process use only; never exposed through a controller. */
 	async load(key: CredentialsKey): Promise<CredentialEnvelope> {
 		const row = await this.repository.find(key);
-		if (!row) throw credentialsNotFound(key.projectId, key.providerCode);
+		if (!row) {
+			throw credentialsNotFound(key.projectId, key.providerCode);
+		}
 		const decrypt = (ciphertext: string) =>
 			this.cipher.decrypt({ ciphertext, keyVersion: row.keyVersion });
 		return {

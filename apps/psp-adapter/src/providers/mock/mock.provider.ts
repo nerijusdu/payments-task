@@ -92,7 +92,9 @@ export class MockProvider implements PaymentProvider {
 		}
 
 		const body = MockWebhookBody.safeParse(json);
-		if (!body.success) throw AppError.validation(body.error.flatten());
+		if (!body.success) {
+			throw AppError.validation(body.error.flatten());
+		}
 		const b = body.data;
 
 		const status = b.type.startsWith('subscription')
@@ -100,7 +102,9 @@ export class MockProvider implements PaymentProvider {
 			: b.type === 'refund.updated'
 				? RefundStatus.safeParse(b.status)
 				: PaymentStatus.safeParse(b.status);
-		if (!status.success) return null;
+		if (!status.success) {
+			return null;
+		}
 
 		return {
 			type: b.type,

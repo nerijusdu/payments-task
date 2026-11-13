@@ -38,7 +38,9 @@ export class PgBossQueue implements EventQueue {
 	async start(): Promise<void> {
 		await this.boss.start();
 		if (this.opts.manageSchema) {
-			for (const name of QUEUE_NAMES) await this.boss.createQueue(name);
+			for (const name of QUEUE_NAMES) {
+				await this.boss.createQueue(name);
+			}
 		}
 	}
 
@@ -56,9 +58,15 @@ export class PgBossQueue implements EventQueue {
 			sendOpts.singletonKey = opts.dedupKey;
 			sendOpts.singletonSeconds = DEDUP_WINDOW_SECONDS;
 		}
-		if (opts.delaySeconds !== undefined) sendOpts.startAfter = opts.delaySeconds;
-		if (opts.retryLimit !== undefined) sendOpts.retryLimit = opts.retryLimit;
-		if (opts.retryBackoff !== undefined) sendOpts.retryBackoff = opts.retryBackoff;
+		if (opts.delaySeconds !== undefined) {
+			sendOpts.startAfter = opts.delaySeconds;
+		}
+		if (opts.retryLimit !== undefined) {
+			sendOpts.retryLimit = opts.retryLimit;
+		}
+		if (opts.retryBackoff !== undefined) {
+			sendOpts.retryBackoff = opts.retryBackoff;
+		}
 		return this.boss.send(queue, payload as object, sendOpts);
 	}
 
