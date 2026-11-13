@@ -26,6 +26,16 @@ export class ProjectsService {
 		return { id: project.id, name: project.name, apiKey, webhookSecret };
 	}
 
+	/** Replaces the API key; the old one stops working immediately. The new key is returned once. */
+	async rotateApiKey(id: string): Promise<{ apiKey: string }> {
+		const apiKey = generateApiKey();
+		const project = await this.repo.update(id, { apiKeyHash: hashApiKey(apiKey) });
+		if (!project) {
+			throw AppError.notFound('Project not found');
+		}
+		return { apiKey };
+	}
+
 	/** Admin read model: never includes the API key hash or webhook secret. */
 	async list() {
 		const rows = await this.repo.list();

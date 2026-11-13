@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import type { Project, ProjectProviderConfig } from '../api';
-import { Button, Card, ErrorMessage, Field, Modal, Select, TextInput, inputClass, td, th } from '../ui';
+import { Button, Card, ErrorMessage, Field, Modal, Secret, Select, TextInput, inputClass, td, th } from '../ui';
 
 const splitList = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
 
@@ -165,6 +165,16 @@ export function ProjectDetailPage() {
 	});
 
 	const [editingProject, setEditingProject] = useState(false);
+	const [newKey, setNewKey] = useState<string | null>(null);
+	const rotate = useMutation({
+		mutationFn: () => api.rotateApiKey(id),
+		onSuccess: (res) => setNewKey(res.apiKey),
+	});
+	const confirmRotate = () => {
+		if (window.confirm('Rotate the API key? The current key stops working immediately.')) {
+			rotate.mutate();
+		}
+	};
 
 	if (isLoading) {
 		return <p>Loading…</p>;
@@ -184,6 +194,13 @@ export function ProjectDetailPage() {
 					</button>
 				</div>
 				<p className="text-sm text-slate-500">{data.id}</p>
+				<p className="text-sm text-slate-500">
+					API key: hidden.
+					<button className="ml-1 text-indigo-600 hover:underline" onClick={confirmRotate}>
+						Rotate
+					</button>
+				</p>
+				<ErrorMessage error={rotate.error} />
 				<p className="text-sm text-slate-500">
 					Webhook URL (project events are sent here): {data.webhookUrl ?? 'not set'}
 				</p>
@@ -243,6 +260,17 @@ export function ProjectDetailPage() {
 				</table>
 			</Card>
 
+			{newKey && (
+				<Modal title="API key rotated" onClose={() => setNewKey(null)}>
+					<div className="space-y-3">
+						<p className="text-sm text-amber-700">Copy it now. It is shown only once.</p>
+						<Secret label="API key" value={newKey} />
+						<div className="flex justify-end">
+							<Button onClick={() => setNewKey(null)}>Done</Button>
+						</div>
+					</div>
+				</Modal>
+			)}
 			{editingProject && <EditProjectModal project={data} onClose={() => setEditingProject(false)} />}
 			{editing && (
 				<ProviderModal

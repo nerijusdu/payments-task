@@ -114,3 +114,12 @@ export const Card = ({ children }: { children: ReactNode }) => (
 
 export const th = 'px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500';
 export const td = 'px-4 py-3 text-sm';
+
+export function Secret({ label, value }: { label: string; value: string }) {
+	return (
+		<div>
+			<div className="text-sm font-medium text-slate-700">{label}</div>
+			<code className="block break-all rounded bg-slate-100 p-2 text-xs">{value}</code>
+		</div>
+	);
+}

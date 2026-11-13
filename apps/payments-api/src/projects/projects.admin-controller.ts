@@ -20,6 +20,10 @@ export function projectsAdminController(service: ProjectsService): Router {
 		res.json(await service.update(req.params.projectId!, dto));
 	}));
 
+	router.post('/:projectId/rotate-api-key', asyncHandler(async (req, res) => {
+		res.json(await service.rotateApiKey(req.params.projectId!));
+	}));
+
 	router.post('/', asyncHandler(async (req, res) => {
 		const dto = parseBody(CreateProjectDto, req.body);
 		res.status(201).json(await service.create(dto));

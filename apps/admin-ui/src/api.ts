@@ -107,6 +107,8 @@ export const api = {
 		request<CreatedProject>('POST', '/projects', input),
 	updateProject: (id: string, input: { name?: string; webhookUrl?: string | null }) =>
 		request<Project>('PATCH', `/projects/${id}`, input),
+	rotateApiKey: (id: string) =>
+		request<{ apiKey: string }>('POST', `/projects/${id}/rotate-api-key`),
 	providers: () => request<Provider[]>('GET', '/providers'),
 	configureProvider: (projectId: string, code: string, input: ConfigureProviderInput) =>
 		request<ProjectProviderConfig>('PUT', `/projects/${projectId}/providers/${code}`, input),

@@ -1,45 +1,17 @@
-// Starts the whole stack: postgres, workspace package builds, migrations, then all apps.
-import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, copyFileSync } from 'node:fs';
-import { randomBytes } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+// Starts all apps. Run `pnpm run prep` first.
+import { spawn } from 'node:child_process';
+import { loadEnv } from './env.mjs';
 
-if (!existsSync('.env')) {
-	copyFileSync('.env.example', '.env');
-	const key = randomBytes(32).toString('base64');
-	writeFileSync('.env', readFileSync('.env', 'utf8').replace(/^CREDENTIALS_ENC_KEY=$/m, `CREDENTIALS_ENC_KEY=${key}`));
-	console.log('[dev] created .env from .env.example with a generated CREDENTIALS_ENC_KEY');
-}
-process.loadEnvFile('.env');
-
-const run = (cmd, args, env = process.env) => {
-	const r = spawnSync(cmd, args, { stdio: 'inherit', env });
-	if (r.status !== 0) {
-		process.exit(r.status ?? 1);
-	}
-};
-
-const adapterEnv = {
-	...process.env,
-	DATABASE_URL: process.env.ADAPTER_DATABASE_URL
-		?? process.env.DATABASE_URL.replace('payments_api:payments', 'psp_adapter:adapter'),
-};
-
-console.log('[dev] starting postgres');
-run('docker', ['compose', 'up', '-d', '--wait', 'postgres']);
-console.log('[dev] building workspace packages');
-run('pnpm', ['--filter', './packages/*', 'build']);
-console.log('[dev] running migrations');
-run('pnpm', ['--filter', '@payments/payments-api', 'db:migrate']);
-run('pnpm', ['--filter', '@payments/psp-adapter', 'db:migrate'], adapterEnv);
+const { env, adapterEnv } = loadEnv();
 
 const apps = [
-	['payments-api', '@payments/payments-api', process.env],
-	['psp-adapter', '@payments/psp-adapter', adapterEnv],
-	['admin-ui', '@payments/admin-ui', process.env],
+	['payments-api', 'pnpm', ['--filter', '@payments/payments-api', 'dev'], env],
+	['psp-adapter', 'pnpm', ['--filter', '@payments/psp-adapter', 'dev'], adapterEnv],
+	['admin-ui', 'pnpm', ['--filter', '@payments/admin-ui', 'dev'], env],
+	['shop', 'npm', ['--prefix', 'examples/shop', 'run', 'dev'], env],
 ];
-const children = apps.map(([label, filter, env]) => {
-	const child = spawn('pnpm', ['--filter', filter, 'dev'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+const children = apps.map(([label, cmd, args, childEnv]) => {
+	const child = spawn(cmd, args, { env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
 	const prefix = (stream, out) => {
 		let buf = '';
 		stream.on('data', (d) => {

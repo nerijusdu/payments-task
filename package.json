@@ -11,6 +11,7 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "prep": "node scripts/prep.mjs",
     "dev": "node scripts/dev.mjs",
     "db:up": "docker compose up -d postgres"
   },

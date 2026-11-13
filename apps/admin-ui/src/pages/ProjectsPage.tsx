@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import type { CreatedProject } from '../api';
-import { Button, Card, ErrorMessage, Field, Modal, TextInput, td, th } from '../ui';
+import { Button, Card, ErrorMessage, Field, Modal, Secret, TextInput, td, th } from '../ui';
 
 function CreateProjectModal({ onClose }: { onClose: () => void }) {
 	const qc = useQueryClient();
@@ -63,15 +63,6 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
 				</div>
 			</form>
 		</Modal>
-	);
-}
-
-function Secret({ label, value }: { label: string; value: string }) {
-	return (
-		<div>
-			<div className="text-sm font-medium text-slate-700">{label}</div>
-			<code className="block break-all rounded bg-slate-100 p-2 text-xs">{value}</code>
-		</div>
 	);
 }
 
