@@ -1,7 +1,10 @@
 import express from 'express';
 import { z } from 'zod';
-import { baseConfigShape, env, loadConfig } from '@payments/config';
+import { baseConfigShape, env, loadConfig, queueConfigShape } from '@payments/config';
 import { correlationMiddleware, createLogger, errorHandler, tokenAuth } from '@payments/http';
+import { createEventQueue } from '@payments/queue';
+import { webhooksExternalController } from './webhooks/webhooks.external-controller.js';
+import { WebhooksService } from './webhooks/webhooks.service.js';
 import { CredentialsRepository } from './credentials/credentials.repository.js';
 import { CredentialsService } from './credentials/credentials.service.js';
 import { credentialsInternalController } from './credentials/credentials.internal-controller.js';
@@ -20,6 +23,7 @@ const config = loadConfig(z.object({
 	...baseConfigShape,
 	PORT: env.port(3001),
 	DATABASE_URL: env.databaseUrl,
+	...queueConfigShape,
 	SERVICE_TOKEN: env.secret(),
 	/** Base64-encoded 32-byte AES key. */
 	CREDENTIALS_ENC_KEY: z.string().min(1),
@@ -33,18 +37,29 @@ const cipher = new CredentialCipher(
 	{ [config.CREDENTIALS_ENC_KEY_VERSION]: config.CREDENTIALS_ENC_KEY },
 	config.CREDENTIALS_ENC_KEY_VERSION,
 );
+const queue = createEventQueue({
+	driver: config.QUEUE_DRIVER,
+	connectionString: config.QUEUE_DATABASE_URL ?? config.DATABASE_URL,
+	schema: config.QUEUE_SCHEMA,
+	manageSchema: false,
+});
+await queue.start();
 const registry = new ProviderRegistry([new MockProvider()]);
 const credentialsService = new CredentialsService(new CredentialsRepository(db), cipher);
 const paymentsService = new PaymentsService(registry, credentialsService);
 const subscriptionsService = new SubscriptionsService(registry, credentialsService);
+const webhooksService = new WebhooksService(registry, credentialsService, queue);
 const refundsService = new RefundsService(registry, credentialsService);
 
 const app = express();
+app.use('/webhooks', express.raw({ type: '*/*', limit: '1mb' }));
 app.use(express.json());
 app.use(correlationMiddleware(logger));
 app.get('/health', (_req, res) => {
 	res.json({ status: 'ok' });
 });
+
+app.use('/webhooks', webhooksExternalController(webhooksService));
 
 const internal = express.Router();
 internal.use(tokenAuth('x-service-token', config.SERVICE_TOKEN));
@@ -62,7 +77,7 @@ app.use(errorHandler(logger));
 const server = app.listen(config.PORT, () => logger.info({ port: config.PORT }, 'psp-adapter up'));
 
 const shutdown = () => {
-	server.close(() => void pool.end());
+	server.close(() => void queue.stop().then(() => pool.end()));
 };
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

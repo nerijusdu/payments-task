@@ -1,4 +1,5 @@
 import type {
+	NormalizedWebhookEvent,
 	AdapterCancelSubscriptionRequest,
 	AdapterCreatePaymentRequest,
 	AdapterCreateSubscriptionRequest,
@@ -17,6 +18,13 @@ export interface CredentialEnvelope {
 export interface ProviderContext {
 	credentials: Record<string, unknown>;
 	idempotencyKey?: string;
+}
+
+export interface RawWebhook {
+	projectId: string;
+	rawBody: Buffer;
+	headers: Record<string, string | string[] | undefined>;
+	webhookSecret?: string;
 }
 
 /** One implementation per PSP. Maps PSP states to normalized statuses. */
@@ -40,4 +48,9 @@ export interface PaymentProvider {
 		providerPaymentId: string,
 		req: AdapterRefundRequest,
 	): Promise<AdapterRefundResponse>;
+	/**
+	 * Verifies the signature and converts the payload.
+	 * Throws an unauthorized AppError on a bad signature; returns null for events to ignore.
+	 */
+	parseWebhook(webhook: RawWebhook): NormalizedWebhookEvent | null;
 }

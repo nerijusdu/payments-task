@@ -96,6 +96,21 @@ export class PaymentsService {
 		return updated;
 	}
 
+	/**
+	 * Applies a status reported by a webhook. Duplicates and replays are no-ops; a payment the
+	 * PSP knows but we have not yet stored throws NOT_FOUND so the queue retries later.
+	 */
+	async applyProviderStatus(
+		projectId: string,
+		providerId: string,
+		providerPaymentId: string,
+		status: Payment['status'],
+	): Promise<Payment> {
+		const payment = await this.repo.find({ projectId, providerId, providerPaymentId });
+		if (!payment) throw AppError.notFound(`Payment not found: ${providerPaymentId}`);
+		return this.transition(payment, status);
+	}
+
 	private async submitToProvider(
 		payment: Payment,
 		dto: CreatePaymentDto,

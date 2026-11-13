@@ -24,16 +24,26 @@ export class PaymentsRepository {
 		projectId: string;
 		id?: string;
 		idempotencyKey?: string;
+		providerId?: string;
+		providerPaymentId?: string;
 	}): Promise<Payment | null> {
 		const [row] = await this.db
 			.select()
 			.from(paymentsTable)
 			.where(and(
 				eq(paymentsTable.projectId, query.projectId),
-				query.id === undefined ? undefined : eq(paymentsTable.id, query.id),
+				query.id === undefined
+					? undefined
+					: eq(paymentsTable.id, query.id),
 				query.idempotencyKey === undefined
 					? undefined
 					: eq(paymentsTable.idempotencyKey, query.idempotencyKey),
+				query.providerId === undefined
+					? undefined
+					: eq(paymentsTable.providerId, query.providerId),
+				query.providerPaymentId === undefined
+					? undefined
+					: eq(paymentsTable.providerPaymentId, query.providerPaymentId),
 			))
 			.limit(1);
 		return row ?? null;

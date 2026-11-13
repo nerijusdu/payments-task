@@ -1,7 +1,11 @@
 import express from 'express';
 import { z } from 'zod';
-import { baseConfigShape, env, loadConfig } from '@payments/config';
+import { baseConfigShape, env, loadConfig, queueConfigShape } from '@payments/config';
 import { correlationMiddleware, createLogger, errorHandler, tokenAuth } from '@payments/http';
+import { createEventQueue } from '@payments/queue';
+import { WebhookEventsRepository } from './webhook-events/webhook-events.repository.js';
+import { WebhookEventsService } from './webhook-events/webhook-events.service.js';
+import { startWebhookEventsWorker } from './webhook-events/webhook-events.worker.js';
 import { createDb } from './shared/db/client.js';
 import { ProjectsRepository } from './projects/projects.repository.js';
 import { ProjectsService } from './projects/projects.service.js';
@@ -21,6 +25,7 @@ const config = loadConfig(z.object({
 	...baseConfigShape,
 	PORT: env.port(3000),
 	DATABASE_URL: env.databaseUrl,
+	...queueConfigShape,
 	ADMIN_TOKEN: env.secret(),
 	ADAPTER_URL: env.url,
 	SERVICE_TOKEN: env.secret(),
@@ -41,6 +46,20 @@ const paymentsService = new PaymentsService(
 	customersService,
 	adapterClient,
 );
+const queue = createEventQueue({
+	driver: config.QUEUE_DRIVER,
+	connectionString: config.QUEUE_DATABASE_URL ?? config.DATABASE_URL,
+	schema: config.QUEUE_SCHEMA,
+	manageSchema: true,
+});
+const webhookEventsService = new WebhookEventsService(
+	new WebhookEventsRepository(db),
+	projectsService,
+	paymentsService,
+	logger,
+);
+await queue.start();
+await startWebhookEventsWorker(queue, webhookEventsService);
 const plansService = new PlansService(new PlansRepository(db), projectsService);
 
 const app = express();
@@ -63,7 +82,7 @@ app.use(errorHandler(logger));
 const server = app.listen(config.PORT, () => logger.info({ port: config.PORT }, 'payments-api up'));
 
 const shutdown = () => {
-	server.close(() => void pool.end());
+	server.close(() => void queue.stop().then(() => pool.end()));
 };
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

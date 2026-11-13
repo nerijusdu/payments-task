@@ -235,6 +235,9 @@ importers:
       '@payments/http':
         specifier: workspace:*
         version: link:../../packages/http
+      '@payments/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(@types/pg@8.23.1)(pg@8.23.1)
@@ -275,6 +278,9 @@ importers:
       '@payments/http':
         specifier: workspace:*
         version: link:../../packages/http
+      '@payments/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(@types/pg@8.23.1)(pg@8.23.1)

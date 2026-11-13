@@ -16,6 +16,7 @@
     "@payments/config": "workspace:*",
     "@payments/contracts": "workspace:*",
     "@payments/http": "workspace:*",
+    "@payments/queue": "workspace:*",
     "drizzle-orm": "^0.44.0",
     "express": "^4.21.2",
     "pg": "^8.13.1",
