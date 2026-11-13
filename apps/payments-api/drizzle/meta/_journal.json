@@ -8,6 +8,13 @@
       "when": 1794425589045,
       "tag": "0000_strong_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794603374428,
+      "tag": "0001_subscriptions_idempotency",
+      "breakpoints": true
     }
   ]
 }

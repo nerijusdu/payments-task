@@ -1,20 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { formatMoney, products } from '@/lib/products';
+import { formatMoney, plans, products } from '@/lib/products';
 
 export default function Home() {
 	const [email, setEmail] = useState('');
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
-	async function buy(productId: string) {
+	async function buy(productId: string, kind: 'pay' | 'subscribe' = 'pay') {
 		setBusy(productId);
 		setError(null);
-		const res = await fetch('/api/pay', {
+		const res = await fetch(`/api/${kind}`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ productId, email }),
+			body: JSON.stringify(kind === 'pay' ? { productId, email } : { planCode: productId, email }),
 		});
 		const body = await res.json();
 		if (!res.ok || !body.redirectUrl) {
@@ -51,6 +51,25 @@ export default function Home() {
 							className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
 						>
 							{busy === p.id ? 'Redirecting…' : 'Buy'}
+						</button>
+					</li>
+				))}
+			</ul>
+
+			<h2 className="mt-8 text-xl font-semibold">Subscriptions</h2>
+			<ul className="mt-3 space-y-3">
+				{plans.map((p) => (
+					<li key={p.code} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
+						<div>
+							<div className="font-medium">{p.name}</div>
+							<div className="text-sm text-slate-500">{formatMoney(p.price, p.currency)} / {p.interval}</div>
+						</div>
+						<button
+							onClick={() => buy(p.code, 'subscribe')}
+							disabled={busy !== null}
+							className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+						>
+							{busy === p.code ? 'Redirecting…' : 'Subscribe'}
 						</button>
 					</li>
 				))}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api';
+import { api, formatMoney } from '../api';
 import type { Project, ProjectProviderConfig } from '../api';
 import { Button, Card, ErrorMessage, Field, Modal, Secret, Select, TextInput, inputClass, td, th } from '../ui';
 
@@ -113,6 +113,89 @@ function ProviderModal({ projectId, providerCode, existing, onClose }: {
 	);
 }
 
+function PlanModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+	const qc = useQueryClient();
+	const providers = useQuery({ queryKey: ['providers'], queryFn: api.providers });
+	const [code, setCode] = useState('');
+	const [name, setName] = useState('');
+	const [amount, setAmount] = useState('');
+	const [currency, setCurrency] = useState('EUR');
+	const [interval, setInterval] = useState<'day' | 'week' | 'month' | 'year'>('month');
+	const [intervalCount, setIntervalCount] = useState('1');
+	const [trialDays, setTrialDays] = useState('0');
+	const [priceIds, setPriceIds] = useState<Record<string, string>>({});
+
+	const save = useMutation({
+		mutationFn: () => api.createPlan(projectId, {
+			code,
+			name,
+			amount: Math.round(Number(amount) * 100),
+			currency: currency.toUpperCase(),
+			interval,
+			intervalCount: Number(intervalCount) || 1,
+			trialDays: Number(trialDays) || 0,
+			providerMappings: Object.entries(priceIds)
+				.filter(([, v]) => v.trim())
+				.map(([providerCode, providerPriceId]) => ({ providerCode, providerPriceId: providerPriceId.trim() })),
+		}),
+		onSuccess: () => {
+			void qc.invalidateQueries({ queryKey: ['plans', projectId] });
+			onClose();
+		},
+	});
+
+	return (
+		<Modal title="Add plan" onClose={onClose}>
+			<form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-4">
+				<ErrorMessage error={save.error} />
+				<Field label="Code" hint="Used by project backends when creating subscriptions.">
+					<TextInput value={code} onChange={(e) => setCode(e.target.value)} required />
+				</Field>
+				<Field label="Name">
+					<TextInput value={name} onChange={(e) => setName(e.target.value)} required />
+				</Field>
+				<div className="grid grid-cols-2 gap-3">
+					<Field label="Price (major units)">
+						<TextInput type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+					</Field>
+					<Field label="Currency">
+						<TextInput value={currency} maxLength={3} onChange={(e) => setCurrency(e.target.value)} required />
+					</Field>
+					<Field label="Interval">
+						<Select value={interval} onChange={(e) => setInterval(e.target.value as typeof interval)}>
+							{['day', 'week', 'month', 'year'].map((i) => <option key={i} value={i}>{i}</option>)}
+						</Select>
+					</Field>
+					<Field label="Every N intervals">
+						<TextInput type="number" min="1" value={intervalCount} onChange={(e) => setIntervalCount(e.target.value)} />
+					</Field>
+					<Field label="Trial days">
+						<TextInput type="number" min="0" value={trialDays} onChange={(e) => setTrialDays(e.target.value)} />
+					</Field>
+				</div>
+				{providers.data && providers.data.length > 0 && (
+					<div className="space-y-2">
+						<div className="text-sm font-medium text-slate-700">Provider price IDs</div>
+						{providers.data.map((p) => (
+							<Field key={p.code} label={p.name}>
+								<TextInput
+									value={priceIds[p.code] ?? ''}
+									onChange={(e) => setPriceIds({ ...priceIds, [p.code]: e.target.value })}
+									placeholder="PSP-side price or plan ID"
+								/>
+							</Field>
+						))}
+					</div>
+				)}
+				<div className="flex justify-end gap-2">
+					<Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+					<Button type="submit" disabled={save.isPending}>Save</Button>
+				</div>
+			</form>
+		</Modal>
+	);
+}
+
 function EditProjectModal({ project, onClose }: { project: Project; onClose: () => void }) {
 	const qc = useQueryClient();
 	const [name, setName] = useState(project.name);
@@ -164,6 +247,8 @@ export function ProjectDetailPage() {
 		onSuccess: () => void qc.invalidateQueries({ queryKey: ['project', id] }),
 	});
 
+	const plans = useQuery({ queryKey: ['plans', id], queryFn: () => api.plans(id) });
+	const [addingPlan, setAddingPlan] = useState(false);
 	const [editingProject, setEditingProject] = useState(false);
 	const [newKey, setNewKey] = useState<string | null>(null);
 	const rotate = useMutation({
@@ -211,6 +296,9 @@ export function ProjectDetailPage() {
 				<div className="flex gap-2">
 					<Link to={`/payments?projectId=${id}`}>
 						<Button variant="secondary">View payments</Button>
+					</Link>
+					<Link to={`/subscriptions?projectId=${id}`}>
+						<Button variant="secondary">View subscriptions</Button>
 					</Link>
 					<Button onClick={() => setEditing({})}>Add provider</Button>
 				</div>
@@ -260,6 +348,42 @@ export function ProjectDetailPage() {
 				</table>
 			</Card>
 
+			<div className="flex items-center justify-between">
+				<h2 className="font-semibold">Subscription plans</h2>
+				<Button onClick={() => setAddingPlan(true)}>Add plan</Button>
+			</div>
+			<ErrorMessage error={plans.error} />
+			<Card>
+				<table className="w-full divide-y divide-slate-200">
+					<thead>
+						<tr>
+							<th className={th}>Code</th>
+							<th className={th}>Name</th>
+							<th className={th}>Price</th>
+							<th className={th}>Interval</th>
+							<th className={th}>Trial</th>
+							<th className={th}>Providers</th>
+						</tr>
+					</thead>
+					<tbody className="divide-y divide-slate-100">
+						{plans.data?.length === 0 && (
+							<tr><td className={`${td} text-slate-500`} colSpan={6}>No plans yet.</td></tr>
+						)}
+						{plans.data?.map((p) => (
+							<tr key={p.id}>
+								<td className={`${td} font-mono`}>{p.code}</td>
+								<td className={td}>{p.name}</td>
+								<td className={td}>{formatMoney(p.amount, p.currency)}</td>
+								<td className={td}>every {p.intervalCount > 1 ? `${p.intervalCount} ` : ''}{p.interval}</td>
+								<td className={td}>{p.trialDays ? `${p.trialDays} days` : '—'}</td>
+								<td className={td}>{p.providerMappings.map((m) => m.providerCode).join(', ') || '—'}</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</Card>
+
+			{addingPlan && <PlanModal projectId={id} onClose={() => setAddingPlan(false)} />}
 			{newKey && (
 				<Modal title="API key rotated" onClose={() => setNewKey(null)}>
 					<div className="space-y-3">

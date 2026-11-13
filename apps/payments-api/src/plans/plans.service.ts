@@ -40,6 +40,14 @@ export class PlansService {
 		);
 	}
 
+	async list(projectId: string) {
+		if (!await this.projects.find({ id: projectId })) {
+			throw AppError.notFound('Project not found');
+		}
+		const rows = await this.repo.list(projectId);
+		return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+	}
+
 	find(query: { projectId: string; id?: string; code?: string }): Promise<Plan | null> {
 		return this.repo.find(query);
 	}

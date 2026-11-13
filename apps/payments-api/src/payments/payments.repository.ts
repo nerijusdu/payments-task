@@ -67,6 +67,7 @@ export class PaymentsRepository {
 				currency: paymentsTable.currency,
 				status: paymentsTable.status,
 				providerPaymentId: paymentsTable.providerPaymentId,
+				subscriptionId: paymentsTable.subscriptionId,
 				metadata: paymentsTable.metadata,
 				createdAt: paymentsTable.createdAt,
 			})

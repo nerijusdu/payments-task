@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CurrencyCode, PaymentStatus } from './common.js';
+import { CurrencyCode, PaymentStatus, SubscriptionStatus } from './common.js';
 
 export const CreateProjectDto = z.object({
 	name: z.string().min(1),
@@ -61,3 +61,11 @@ export const AdminListPaymentsQuery = z.object({
 	offset: z.coerce.number().int().min(0).default(0),
 });
 export type AdminListPaymentsQuery = z.infer<typeof AdminListPaymentsQuery>;
+
+export const AdminListSubscriptionsQuery = z.object({
+	projectId: z.string().uuid().optional(),
+	status: SubscriptionStatus.optional(),
+	limit: z.coerce.number().int().min(1).max(200).default(50),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+export type AdminListSubscriptionsQuery = z.infer<typeof AdminListSubscriptionsQuery>;

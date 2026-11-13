@@ -58,6 +58,12 @@ export class ProjectsService {
 		return { ...toSummary(project), providers: await this.repo.listProjectProviders(id) };
 	}
 
+	/** Enabled providers for a project, in checkout order. */
+	async listEnabledProviders(projectId: string) {
+		const rows = await this.repo.listProjectProviders(projectId);
+		return rows.filter((r) => r.isEnabled);
+	}
+
 	listAvailableProviders() {
 		return this.repo.listProviders().then((rows) => rows
 			.filter((p) => p.isActive)

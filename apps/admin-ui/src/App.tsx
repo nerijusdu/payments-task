@@ -4,6 +4,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { PaymentsPage } from './pages/PaymentsPage';
+import { SubscriptionsPage } from './pages/SubscriptionsPage';
 
 function Layout() {
 	const { logout } = useAuth();
@@ -18,6 +19,7 @@ function Layout() {
 					<span className="mr-4 font-semibold">Payments Admin</span>
 					<NavLink to="/projects" className={link}>Projects</NavLink>
 					<NavLink to="/payments" className={link}>Payments</NavLink>
+					<NavLink to="/subscriptions" className={link}>Subscriptions</NavLink>
 					<button onClick={logout} className="ml-auto text-sm text-slate-500 hover:text-slate-800">
 						Sign out
 					</button>
@@ -45,6 +47,7 @@ export function App() {
 				<Route path="/projects" element={<ProjectsPage />} />
 				<Route path="/projects/:id" element={<ProjectDetailPage />} />
 				<Route path="/payments" element={<PaymentsPage />} />
+				<Route path="/subscriptions" element={<SubscriptionsPage />} />
 				<Route path="*" element={<Navigate to="/projects" replace />} />
 			</Route>
 		</Routes>

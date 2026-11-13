@@ -96,6 +96,9 @@ const STATUS_COLORS: Record<string, string> = {
 	failed: 'bg-red-100 text-red-800',
 	canceled: 'bg-slate-200 text-slate-600',
 	refunded: 'bg-blue-100 text-blue-800',
+	active: 'bg-green-100 text-green-800',
+	trialing: 'bg-blue-100 text-blue-800',
+	past_due: 'bg-red-100 text-red-800',
 };
 
 export function StatusBadge({ status }: { status: string }) {

@@ -2,6 +2,7 @@ import type { Logger } from 'pino';
 import type { NormalizedWebhookEvent, PaymentStatus } from '@payments/contracts';
 import { AppError } from '@payments/http';
 import type { PaymentsService } from '../payments/payments.service.js';
+import type { SubscriptionsService } from '../subscriptions/subscriptions.service.js';
 import type { ProjectsService } from '../projects/projects.service.js';
 import type { WebhookEventsRepository } from './webhook-events.repository.js';
 
@@ -10,6 +11,7 @@ export class WebhookEventsService {
 		private readonly repo: WebhookEventsRepository,
 		private readonly projects: ProjectsService,
 		private readonly payments: PaymentsService,
+		private readonly subscriptions: SubscriptionsService,
 		private readonly logger: Logger,
 	) { }
 
@@ -62,8 +64,12 @@ export class WebhookEventsService {
 					event.status as PaymentStatus,
 				);
 				return;
+			case 'subscription.updated':
+			case 'subscription.renewed':
+				await this.subscriptions.applyProviderEvent(providerId, event);
+				return;
 			default:
-				// Refund and subscription events are handled once those features exist.
+				// Refund events are handled once that feature exists.
 				this.logger.info({ type: event.type }, 'webhook event type not handled yet');
 		}
 	}

@@ -1,11 +1,14 @@
 import {
 	AdapterPaymentResponse,
+	AdapterSubscriptionResponse,
 	CORRELATION_ID_HEADER,
 	CredentialsStatusResponse,
 	ErrorResponse,
 } from '@payments/contracts';
 import type {
+	AdapterCancelSubscriptionRequest,
 	AdapterCreatePaymentRequest,
+	AdapterCreateSubscriptionRequest,
 	SaveCredentialsRequest,
 } from '@payments/contracts';
 import { AppError } from '@payments/http';
@@ -56,6 +59,36 @@ export class AdapterClient {
 			throw new AppError('PROVIDER_ERROR', 502, 'Invalid response from psp-adapter');
 		}
 		return parsed.data;
+	}
+
+	async createSubscription(
+		providerCode: string,
+		req: AdapterCreateSubscriptionRequest,
+		opts: { idempotencyKey: string; correlationId?: string },
+	): Promise<AdapterSubscriptionResponse> {
+		const json = await this.call({
+			method: 'POST',
+			path: `/v1/${encodeURIComponent(providerCode)}/subscriptions`,
+			body: req,
+			...opts,
+		});
+		return parseSubscription(json);
+	}
+
+	async cancelSubscription(
+		providerCode: string,
+		providerSubscriptionId: string,
+		req: AdapterCancelSubscriptionRequest,
+		opts: { idempotencyKey: string; correlationId?: string },
+	): Promise<AdapterSubscriptionResponse> {
+		const json = await this.call({
+			method: 'POST',
+			path: `/v1/${encodeURIComponent(providerCode)}/subscriptions/`
+				+ `${encodeURIComponent(providerSubscriptionId)}/cancel`,
+			body: req,
+			...opts,
+		});
+		return parseSubscription(json);
 	}
 
 	async saveCredentials(
@@ -149,6 +182,13 @@ class RetryableError extends AppError {
 	}
 }
 
+const parseSubscription = (json: unknown): AdapterSubscriptionResponse => {
+	const parsed = AdapterSubscriptionResponse.safeParse(json);
+	if (!parsed.success) {
+		throw new AppError('PROVIDER_ERROR', 502, 'Invalid response from psp-adapter');
+	}
+	return parsed.data;
+};
 const isRetryable = (err: unknown) => err instanceof RetryableError;
 const credentialsPath = (projectId: string, providerCode: string) =>
 	`/internal/projects/${encodeURIComponent(projectId)}`

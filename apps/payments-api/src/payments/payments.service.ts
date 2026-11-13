@@ -100,6 +100,24 @@ export class PaymentsService {
 		return this.toResponse(payment, provider?.code ?? 'unknown');
 	}
 
+	/** Records a payment created by a subscription renewal. A replayed event is a no-op. */
+	async recordRenewal(values: {
+		projectId: string;
+		customerId: string;
+		providerId: string;
+		subscriptionId: string;
+		amount: number;
+		currency: string;
+		idempotencyKey: string;
+		providerPaymentId: string;
+		status: Payment['status'];
+	}): Promise<void> {
+		const created = await this.repo.insertIfAbsent(values);
+		if (created) {
+			await this.notifyProject(created);
+		}
+	}
+
 	/** Moves a payment along the state machine; used by the payment flow and webhook handling. */
 	async transition(payment: Payment, to: Payment['status'], providerPaymentId?: string) {
 		if (payment.status === to && providerPaymentId === undefined) {

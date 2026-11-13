@@ -86,6 +86,7 @@ export interface AdminPayment {
 	currency: string;
 	status: PaymentStatus;
 	providerPaymentId: string | null;
+	subscriptionId: string | null;
 	metadata: Record<string, string> | null;
 	createdAt: string;
 }
@@ -98,7 +99,65 @@ export interface ConfigureProviderInput {
 	webhookSecret?: string;
 }
 
+export const SUBSCRIPTION_STATUSES = [
+	'pending', 'trialing', 'active', 'past_due', 'canceled',
+] as const;
+export type SubscriptionStatus = typeof SUBSCRIPTION_STATUSES[number];
+export interface AdminSubscription {
+	id: string;
+	projectId: string;
+	projectName: string;
+	providerCode: string;
+	planCode: string;
+	planName: string;
+	customerRef: string;
+	customerEmail: string | null;
+	amount: number;
+	currency: string;
+	status: SubscriptionStatus;
+	providerSubscriptionId: string | null;
+	currentPeriodStart: string | null;
+	currentPeriodEnd: string | null;
+	cancelAtPeriodEnd: boolean;
+	canceledAt: string | null;
+	createdAt: string;
+}
+
+export interface AdminPlan {
+	id: string;
+	code: string;
+	name: string;
+	amount: number;
+	currency: string;
+	interval: 'day' | 'week' | 'month' | 'year';
+	intervalCount: number;
+	trialDays: number;
+	providerMappings: { providerCode: string; providerPriceId: string }[];
+}
+export interface CreatePlanInput {
+	code: string;
+	name: string;
+	amount: number;
+	currency: string;
+	interval: AdminPlan['interval'];
+	intervalCount: number;
+	trialDays: number;
+	providerMappings: { providerCode: string; providerPriceId: string }[];
+}
+
 export const api = {
+	subscriptions: (params: { projectId?: string; status?: string; limit: number; offset: number }) => {
+		const qs = new URLSearchParams();
+		for (const [k, v] of Object.entries(params)) {
+			if (v !== undefined && v !== '') {
+				qs.set(k, String(v));
+			}
+		}
+		return request<AdminSubscription[]>('GET', `/subscriptions?${qs}`);
+	},
+	plans: (projectId: string) => request<AdminPlan[]>('GET', `/projects/${projectId}/plans`),
+	createPlan: (projectId: string, input: CreatePlanInput) =>
+		request<AdminPlan>('POST', `/projects/${projectId}/plans`, input),
 	login: (username: string, password: string) =>
 		request<{ token: string }>('POST', '/login', { username, password }),
 	projects: () => request<Project[]>('GET', '/projects'),

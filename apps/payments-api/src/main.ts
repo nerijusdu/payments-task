@@ -27,6 +27,12 @@ import { apiKeyAuth } from './shared/auth/api-key.middleware.js';
 import { PlansRepository } from './plans/plans.repository.js';
 import { PlansService } from './plans/plans.service.js';
 import { paymentsAdminController } from './payments/payments.admin-controller.js';
+import { SubscriptionsRepository } from './subscriptions/subscriptions.repository.js';
+import { SubscriptionsService } from './subscriptions/subscriptions.service.js';
+import { subscriptionsExternalController } from './subscriptions/subscriptions.external-controller.js';
+import { subscriptionsAdminController } from './subscriptions/subscriptions.admin-controller.js';
+import { CheckoutService } from './checkout/checkout.service.js';
+import { checkoutExternalController } from './checkout/checkout.external-controller.js';
 import { plansAdminController } from './plans/plans.admin-controller.js';
 
 const config = loadConfig(z.object({
@@ -69,16 +75,27 @@ const paymentsService = new PaymentsService(
 	adapterClient,
 	outboundWebhooksService,
 );
+const plansService = new PlansService(new PlansRepository(db), projectsService);
+const subscriptionsService = new SubscriptionsService(
+	new SubscriptionsRepository(db),
+	projectsService,
+	customersService,
+	plansService,
+	paymentsService,
+	adapterClient,
+	outboundWebhooksService,
+);
+const checkoutService = new CheckoutService(projectsService);
 const webhookEventsService = new WebhookEventsService(
 	new WebhookEventsRepository(db),
 	projectsService,
 	paymentsService,
+	subscriptionsService,
 	logger,
 );
 await queue.start();
 await startWebhookEventsWorker(queue, webhookEventsService);
 await startOutboundWebhooksWorker(queue, outboundWebhooksService);
-const plansService = new PlansService(new PlansRepository(db), projectsService);
 
 const app = express();
 app.use(express.json());
@@ -110,11 +127,18 @@ admin.get('/providers', asyncHandler(async (_req, res) => {
 }));
 admin.use('/projects', projectsAdminController(projectsService));
 admin.use('/payments', paymentsAdminController(paymentsService));
+admin.use('/subscriptions', subscriptionsAdminController(subscriptionsService));
 admin.use('/projects/:projectId/plans', plansAdminController(plansService));
 app.use('/v1/admin', admin);
 
 // External routes
 app.use('/v1/payments', apiKeyAuth(projectsService), paymentsExternalController(paymentsService));
+app.use(
+	'/v1/subscriptions',
+	apiKeyAuth(projectsService),
+	subscriptionsExternalController(subscriptionsService),
+);
+app.use('/v1/checkout', apiKeyAuth(projectsService), checkoutExternalController(checkoutService));
 
 app.use(errorHandler(logger));
 

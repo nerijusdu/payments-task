@@ -14,6 +14,7 @@ function PaymentModal({ payment, onClose }: { payment: AdminPayment; onClose: ()
 		['Provider', payment.providerCode],
 		['Provider payment ID', payment.providerPaymentId ?? '—'],
 		['Amount', formatMoney(payment.amount, payment.currency)],
+		['Subscription', payment.subscriptionId ?? '—'],
 		['Customer', payment.customerRef],
 		['Email', payment.customerEmail ?? '—'],
 		['Created', new Date(payment.createdAt).toLocaleString()],
@@ -102,14 +103,15 @@ export function PaymentsPage() {
 							<th className={th}>Project</th>
 							<th className={th}>Customer</th>
 							<th className={th}>Provider</th>
+							<th className={th}>Type</th>
 							<th className={th}>Amount</th>
 							<th className={th}>Status</th>
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-slate-100">
-						{payments.isLoading && <tr><td className={td} colSpan={6}>Loading…</td></tr>}
+						{payments.isLoading && <tr><td className={td} colSpan={7}>Loading…</td></tr>}
 						{payments.data?.length === 0 && (
-							<tr><td className={`${td} text-slate-500`} colSpan={6}>No payments found.</td></tr>
+							<tr><td className={`${td} text-slate-500`} colSpan={7}>No payments found.</td></tr>
 						)}
 						{payments.data?.map((p) => (
 							<tr key={p.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSelected(p)}>
@@ -117,6 +119,7 @@ export function PaymentsPage() {
 								<td className={td}>{p.projectName}</td>
 								<td className={td}>{p.customerRef}</td>
 								<td className={td}>{p.providerCode}</td>
+								<td className={td}>{p.subscriptionId ? 'Subscription' : 'One-time'}</td>
 								<td className={td}>{formatMoney(p.amount, p.currency)}</td>
 								<td className={td}><StatusBadge status={p.status} /></td>
 							</tr>

@@ -83,8 +83,12 @@ export const subscriptions = payments.table('subscriptions', {
 	currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
 	cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
 	canceledAt: timestamp('canceled_at', { withTimezone: true }),
+	idempotencyKey: text('idempotency_key').notNull(),
 	createdAt: createdAt(),
-}, (t) => [index('subscriptions_provider_sub_idx').on(t.providerId, t.providerSubscriptionId)]);
+}, (t) => [
+	index('subscriptions_provider_sub_idx').on(t.providerId, t.providerSubscriptionId),
+	uniqueIndex('subscriptions_project_idempotency_uq').on(t.projectId, t.idempotencyKey),
+]);
 
 export const paymentsTable = payments.table('payments', {
 	id: id(),

@@ -12,3 +12,8 @@ Minimal Next.js + Tailwind + TypeScript app that takes payments through the paym
 - `POST /api/pay` (server) calls `POST /v1/payments` with the API key and an `Idempotency-Key`, then returns the redirect URL.
 - The mock PSP redirects back to `/return?mock_object=...&payment_id=...`.
 - `/return` polls `GET /api/payments/:id` until the status is final. The API key never reaches the browser.
+
+## Subscriptions
+
+- `POST /api/subscribe` calls `POST /v1/subscriptions` for the seeded `basic-monthly` plan and returns the redirect URL.
+- The mock PSP redirects to `/subscription?mock_object=...&subscription_id=...`, which polls `GET /api/subscriptions/:id` while the status is `pending` and offers cancel (at period end or immediately) via `POST /api/subscriptions/:id/cancel`.

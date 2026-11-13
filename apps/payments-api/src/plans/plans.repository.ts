@@ -1,6 +1,6 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { Db } from '../shared/db/client.js';
-import { planProviderMappings, plans } from '../shared/db/schema.js';
+import { planProviderMappings, plans, providers } from '../shared/db/schema.js';
 
 export type Plan = typeof plans.$inferSelect;
 
@@ -21,6 +21,25 @@ export class PlansRepository {
 			}
 			return plan!;
 		});
+	}
+
+	async list(projectId: string) {
+		const rows = await this.db
+			.select({ plan: plans, providerCode: providers.code, providerPriceId: planProviderMappings.providerPriceId })
+			.from(plans)
+			.leftJoin(planProviderMappings, eq(planProviderMappings.planId, plans.id))
+			.leftJoin(providers, eq(providers.id, planProviderMappings.providerId))
+			.where(eq(plans.projectId, projectId))
+			.orderBy(asc(plans.createdAt));
+		const byId = new Map<string, Plan & { providerMappings: { providerCode: string; providerPriceId: string }[] }>();
+		for (const r of rows) {
+			const entry = byId.get(r.plan.id) ?? { ...r.plan, providerMappings: [] };
+			if (r.providerCode && r.providerPriceId) {
+				entry.providerMappings.push({ providerCode: r.providerCode, providerPriceId: r.providerPriceId });
+			}
+			byId.set(r.plan.id, entry);
+		}
+		return [...byId.values()];
 	}
 
 	async find(query: { projectId: string; id?: string; code?: string }): Promise<Plan | null> {

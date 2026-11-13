@@ -66,3 +66,45 @@ export function createPayment(input: {
 export function getPayment(id: string) {
 	return call<Payment>(`/v1/payments/${encodeURIComponent(id)}`);
 }
+
+export type Subscription = {
+	id: string;
+	status: 'pending' | 'trialing' | 'active' | 'past_due' | 'canceled';
+	planCode: string;
+	providerCode: string;
+	amount: number;
+	currency: string;
+	currentPeriodEnd?: string;
+	cancelAtPeriodEnd: boolean;
+	action?: Payment['action'];
+};
+
+export function createSubscription(input: {
+	idempotencyKey: string;
+	planCode: string;
+	customerRef: string;
+	email?: string;
+	returnUrl: string;
+}) {
+	return call<Subscription>('/v1/subscriptions', {
+		method: 'POST',
+		idempotencyKey: input.idempotencyKey,
+		body: JSON.stringify({
+			providerCode: 'mock',
+			planCode: input.planCode,
+			customer: { externalRef: input.customerRef, email: input.email },
+			returnUrl: input.returnUrl,
+		}),
+	});
+}
+
+export function getSubscription(id: string) {
+	return call<Subscription>(`/v1/subscriptions/${encodeURIComponent(id)}`);
+}
+
+export function cancelSubscription(id: string, atPeriodEnd: boolean) {
+	return call<Subscription>(`/v1/subscriptions/${encodeURIComponent(id)}/cancel`, {
+		method: 'POST',
+		body: JSON.stringify({ atPeriodEnd }),
+	});
+}

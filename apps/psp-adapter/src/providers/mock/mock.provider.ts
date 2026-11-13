@@ -71,14 +71,59 @@ export class MockProvider implements PaymentProvider {
 	): Promise<AdapterSubscriptionResponse> {
 		const providerSubscriptionId = `mock_sub_${randomUUID()}`;
 		const start = new Date();
+		const end = new Date(start.getTime() + 30 * DAY_MS);
+		this.activateLater(req, providerSubscriptionId, start, end);
 		return {
 			providerSubscriptionId,
 			providerCustomerId: req.customer.providerCustomerId ?? `mock_cus_${randomUUID()}`,
 			status: 'pending',
 			currentPeriodStart: start.toISOString(),
-			currentPeriodEnd: new Date(start.getTime() + 30 * DAY_MS).toISOString(),
+			currentPeriodEnd: end.toISOString(),
 			action: { type: 'redirect', url: mockCheckoutUrl(req.returnUrl, providerSubscriptionId) },
 		};
+	}
+
+	/** Simulates the customer finishing the redirect: publishes `active` (or `trialing`) after a delay. */
+	private activateLater(
+		req: AdapterCreateSubscriptionRequest,
+		providerSubscriptionId: string,
+		start: Date,
+		end: Date,
+	): void {
+		const timer = setTimeout(() => {
+			const message: WebhookEventsMessage = {
+				event: {
+					type: 'subscription.updated',
+					providerCode: this.code,
+					projectId: req.projectId,
+					providerEventId: `mock_evt_${randomUUID()}`,
+					providerObjectId: providerSubscriptionId,
+					status: req.trialDays ? 'trialing' : 'active',
+					currentPeriodStart: start.toISOString(),
+					currentPeriodEnd: end.toISOString(),
+					occurredAt: new Date().toISOString(),
+				},
+			};
+			const publish = (m: WebhookEventsMessage) =>
+				this.queue.publish('webhook-events', m, { retryLimit: 5, retryBackoff: true })
+					.catch((err) => this.logger.error({ err, providerSubscriptionId }, 'mock activation failed'));
+			publish(message);
+			if (!req.trialDays) {
+				// The first charge arrives as a renewal event so it is recorded as a payment.
+				publish({
+					event: {
+						...message.event,
+						type: 'subscription.renewed',
+						providerEventId: `mock_evt_${randomUUID()}`,
+						providerObjectId: `mock_pay_${randomUUID()}`,
+						providerSubscriptionId,
+						amount: req.amount,
+						currency: req.currency,
+					},
+				});
+			}
+		}, COMPLETE_AFTER_MS);
+		timer.unref();
 	}
 
 	async cancelSubscription(
