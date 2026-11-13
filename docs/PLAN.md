@@ -85,7 +85,7 @@ apps/
     src/
       main.ts                           composition root, manual DI
       projects/
-        projects.external-controller.ts   admin auth: create project, configure providers + credentials
+        projects.admin-controller.ts      admin auth: manage projects, providers + credentials
         projects.service.ts
         projects.repository.ts
       checkout/
@@ -93,6 +93,7 @@ apps/
         checkout.service.ts
       payments/
         payments.external-controller.ts
+        payments.admin-controller.ts      admin auth: list payments for the admin UI
         payments.service.ts
         payments.repository.ts
         payments.state-machine.ts
@@ -104,7 +105,7 @@ apps/
         customers.service.ts
         customers.repository.ts
       plans/
-        plans.external-controller.ts
+        plans.admin-controller.ts
         plans.service.ts
         plans.repository.ts
       subscriptions/
@@ -163,13 +164,11 @@ docker-compose.yml
 
 File roles:
 
-- **`*.external-controller.ts`:** endpoints called from outside the system: project backends, operators and PSPs. Reachable from outside the network, so every route must authenticate its caller. The auth scheme is declared per route group by middleware:
-  - project backends: API key
-  - operators (project and plan configuration): admin token
-  - PSP webhooks: signature verification
+- **`*.external-controller.ts`:** endpoints called by project backends (API key auth, under `/v1/...`) and by PSPs (signature verification). Never used by the admin UI.
+- **`*.admin-controller.ts`:** endpoints used only by the admin UI (admin auth, always under `/v1/admin/...`). They are mounted on a separate router so they can never be reached with an API key, and project-facing routes can never be reached with the admin token. Admin read models never return secrets (API key hash, webhook secret, credentials).
 - **`*.internal-controller.ts`:** endpoints for service-to-service calls only (payments-api calling psp-adapter). Service-token auth, on the internal network, never routed publicly.
 
-Naming note: `external` / `internal` describes the network boundary, which is what decides exposure and auth. `public` was avoided because it suggests unauthenticated access. Controllers are not split further by caller type. If an app later grows many admin-only endpoints, an `*.admin-controller.ts` can be added.
+Naming note: the role in the file name is the audience, which decides the URL prefix and auth: `external` (projects, PSPs), `admin` (admin UI), `internal` (service-to-service). `public` was avoided because it suggests unauthenticated access.
 
 - **`*.service.ts`:** business logic and orchestration. Calls its own repository and other features' services. No Express or Drizzle types.
 - **`*.repository.ts`:** the only place that runs queries for that feature's tables. Returns plain domain objects.
@@ -311,9 +310,15 @@ POST   /v1/:providerCode/payments/:providerPaymentId/refunds
 POST   /webhooks/:providerCode/:projectId
 ```
 
-### payments-api external: configuration (operators, admin token)
+### payments-api admin: used by the admin UI only (admin auth)
 
 ```
+POST   /v1/admin/login                       body: { username, password } -> { token }
+GET    /v1/admin/providers
+GET    /v1/admin/projects
+GET    /v1/admin/projects/:projectId
+PATCH  /v1/admin/projects/:projectId         body: { name?, webhookUrl? }
+GET    /v1/admin/payments?projectId&status&limit&offset
 POST   /v1/admin/projects
 PUT    /v1/admin/projects/:projectId/providers/:providerCode
          body: { isEnabled, sortOrder, supportedMethods, currencies,

@@ -1,4 +1,6 @@
-import type { CreatePaymentDto, PaymentResponseDto } from '@payments/contracts';
+import type {
+	AdminListPaymentsQuery, CreatePaymentDto, PaymentResponseDto,
+} from '@payments/contracts';
 import { AppError } from '@payments/http';
 import type { CustomersService } from '../customers/customers.service.js';
 import type { ProjectsService } from '../projects/projects.service.js';
@@ -73,6 +75,11 @@ export class PaymentsService {
 			return this.toResponse(submitted.payment, dto.providerCode, submitted.action);
 		}
 		return this.toResponse(payment, dto.providerCode);
+	}
+
+	async listForAdmin(query: AdminListPaymentsQuery) {
+		const rows = await this.repo.list(query);
+		return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
 	}
 
 	async get(projectId: string, id: string): Promise<PaymentResponseDto> {

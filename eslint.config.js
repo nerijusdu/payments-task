@@ -19,5 +19,11 @@ export default tseslint.config(
 			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
 			'@stylistic/max-len': ['error', { code: 100, ignoreStrings: true, ignoreComments: true }],
 		},
+	},	{
+		files: ['apps/admin-ui/**/*.{ts,tsx}'],
+		rules: {
+			'@stylistic/max-len': 'off',
+			'@stylistic/jsx-one-expression-per-line': 'off',
+		},
 	},
 );

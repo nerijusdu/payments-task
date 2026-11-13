@@ -1,4 +1,3 @@
-CREATE SCHEMA "adapter";
 --> statement-breakpoint
 CREATE TABLE "adapter"."provider_credentials" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,

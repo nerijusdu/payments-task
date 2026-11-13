@@ -1,5 +1,5 @@
 import type {
-	ConfigureProviderDto, CreateProjectDto, CreateProjectResponseDto,
+	ConfigureProviderDto, CreateProjectDto, CreateProjectResponseDto, UpdateProjectDto,
 } from '@payments/contracts';
 import { AppError } from '@payments/http';
 import type { AdapterClient } from '../shared/adapter-client/adapter-client.js';
@@ -24,6 +24,34 @@ export class ProjectsService {
 			webhookSecret,
 		});
 		return { id: project.id, name: project.name, apiKey, webhookSecret };
+	}
+
+	/** Admin read model: never includes the API key hash or webhook secret. */
+	async list() {
+		const rows = await this.repo.list();
+		return rows.map(toSummary);
+	}
+
+	async update(id: string, dto: UpdateProjectDto) {
+		const project = await this.repo.update(id, dto);
+		if (!project) {
+			throw AppError.notFound('Project not found');
+		}
+		return toSummary(project);
+	}
+
+	async getDetail(id: string) {
+		const project = await this.repo.find({ id });
+		if (!project) {
+			throw AppError.notFound('Project not found');
+		}
+		return { ...toSummary(project), providers: await this.repo.listProjectProviders(id) };
+	}
+
+	listAvailableProviders() {
+		return this.repo.listProviders().then((rows) => rows
+			.filter((p) => p.isActive)
+			.map((p) => ({ code: p.code, name: p.name })));
 	}
 
 	find(query: { id?: string; name?: string; apiKey?: string }): Promise<Project | null> {
@@ -90,4 +118,13 @@ export class ProjectsService {
 	findProjectProvider(projectId: string, providerId: string) {
 		return this.repo.findProjectProvider(projectId, providerId);
 	}
+}
+
+function toSummary(p: Project) {
+	return {
+		id: p.id,
+		name: p.name,
+		webhookUrl: p.webhookUrl,
+		createdAt: p.createdAt.toISOString(),
+	};
 }

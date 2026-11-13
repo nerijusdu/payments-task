@@ -1,11 +1,18 @@
 import { z } from 'zod';
-import { CurrencyCode } from './common.js';
+import { CurrencyCode, PaymentStatus } from './common.js';
 
 export const CreateProjectDto = z.object({
 	name: z.string().min(1),
 	webhookUrl: z.string().url().optional(),
 });
 export type CreateProjectDto = z.infer<typeof CreateProjectDto>;
+
+export const UpdateProjectDto = z.object({
+	name: z.string().min(1).optional(),
+	/** Null clears the URL. */
+	webhookUrl: z.string().url().nullable().optional(),
+});
+export type UpdateProjectDto = z.infer<typeof UpdateProjectDto>;
 
 /** The API key and webhook secret are returned once, at creation. */
 export const CreateProjectResponseDto = z.object({
@@ -40,3 +47,17 @@ export const CreatePlanDto = z.object({
 		.default([]),
 });
 export type CreatePlanDto = z.infer<typeof CreatePlanDto>;
+
+export const AdminLoginDto = z.object({
+	username: z.string().min(1),
+	password: z.string().min(1),
+});
+export type AdminLoginDto = z.infer<typeof AdminLoginDto>;
+
+export const AdminListPaymentsQuery = z.object({
+	projectId: z.string().uuid().optional(),
+	status: PaymentStatus.optional(),
+	limit: z.coerce.number().int().min(1).max(200).default(50),
+	offset: z.coerce.number().int().min(0).default(0),
+});
+export type AdminListPaymentsQuery = z.infer<typeof AdminListPaymentsQuery>;

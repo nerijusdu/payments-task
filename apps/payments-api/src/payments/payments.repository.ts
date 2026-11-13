@@ -1,7 +1,7 @@
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { PaymentStatus } from '@payments/contracts';
 import type { Db } from '../shared/db/client.js';
-import { paymentsTable } from '../shared/db/schema.js';
+import { customers, paymentsTable, projects, providers } from '../shared/db/schema.js';
 
 export type Payment = typeof paymentsTable.$inferSelect;
 
@@ -47,6 +47,42 @@ export class PaymentsRepository {
 			))
 			.limit(1);
 		return row ?? null;
+	}
+
+	async list(filter: {
+		projectId?: string;
+		status?: PaymentStatus;
+		limit: number;
+		offset: number;
+	}) {
+		return this.db
+			.select({
+				id: paymentsTable.id,
+				projectId: paymentsTable.projectId,
+				projectName: projects.name,
+				providerCode: providers.code,
+				customerRef: customers.externalRef,
+				customerEmail: customers.email,
+				amount: paymentsTable.amount,
+				currency: paymentsTable.currency,
+				status: paymentsTable.status,
+				providerPaymentId: paymentsTable.providerPaymentId,
+				metadata: paymentsTable.metadata,
+				createdAt: paymentsTable.createdAt,
+			})
+			.from(paymentsTable)
+			.innerJoin(projects, eq(projects.id, paymentsTable.projectId))
+			.innerJoin(providers, eq(providers.id, paymentsTable.providerId))
+			.innerJoin(customers, eq(customers.id, paymentsTable.customerId))
+			.where(and(
+				filter.projectId === undefined
+					? undefined
+					: eq(paymentsTable.projectId, filter.projectId),
+				filter.status === undefined ? undefined : eq(paymentsTable.status, filter.status),
+			))
+			.orderBy(desc(paymentsTable.createdAt))
+			.limit(filter.limit)
+			.offset(filter.offset);
 	}
 
 	/** Compare-and-set on the current status so concurrent writers cannot skip the state machine. */

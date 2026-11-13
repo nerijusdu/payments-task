@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import type { Db } from '../shared/db/client.js';
 import { projectProviders, projects, providers } from '../shared/db/schema.js';
 
@@ -19,6 +19,21 @@ export class ProjectsRepository {
 		return row!;
 	}
 
+	async update(
+		id: string,
+		values: Partial<typeof projects.$inferInsert>,
+	): Promise<Project | null> {
+		if (Object.keys(values).length === 0) {
+			return this.find({ id });
+		}
+		const [row] = await this.db
+			.update(projects)
+			.set(values)
+			.where(eq(projects.id, id))
+			.returning();
+		return row ?? null;
+	}
+
 	async find(query: ProjectQuery): Promise<Project | null> {
 		const [row] = await this.db
 			.select()
@@ -32,6 +47,30 @@ export class ProjectsRepository {
 			))
 			.limit(1);
 		return row ?? null;
+	}
+
+	list(): Promise<Project[]> {
+		return this.db.select().from(projects).orderBy(desc(projects.createdAt));
+	}
+
+	listProviders(): Promise<Provider[]> {
+		return this.db.select().from(providers).orderBy(asc(providers.code));
+	}
+
+	listProjectProviders(projectId: string) {
+		return this.db
+			.select({
+				providerCode: providers.code,
+				providerName: providers.name,
+				isEnabled: projectProviders.isEnabled,
+				sortOrder: projectProviders.sortOrder,
+				supportedMethods: projectProviders.supportedMethods,
+				currencies: projectProviders.currencies,
+			})
+			.from(projectProviders)
+			.innerJoin(providers, eq(providers.id, projectProviders.providerId))
+			.where(eq(projectProviders.projectId, projectId))
+			.orderBy(asc(projectProviders.sortOrder));
 	}
 
 	async upsertProvider(code: string, name: string): Promise<Provider> {

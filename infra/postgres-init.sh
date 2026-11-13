@@ -10,6 +10,8 @@ CREATE SCHEMA adapter AUTHORIZATION psp_adapter;
 -- pgboss is created and migrated by payments-api (pg-boss needs CREATE on the DB to run
 -- CREATE SCHEMA IF NOT EXISTS); the adapter only gets DML.
 GRANT CREATE ON DATABASE payments TO payments_api;
+-- drizzle's migrator runs CREATE SCHEMA IF NOT EXISTS, which needs this even when it exists.
+GRANT CREATE ON DATABASE payments TO psp_adapter;
 CREATE SCHEMA pgboss AUTHORIZATION payments_api;
 
 GRANT USAGE ON SCHEMA pgboss TO psp_adapter;

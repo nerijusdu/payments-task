@@ -1,11 +1,24 @@
 import { Router } from 'express';
-import { ConfigureProviderDto, CreateProjectDto } from '@payments/contracts';
+import { ConfigureProviderDto, CreateProjectDto, UpdateProjectDto } from '@payments/contracts';
 import { asyncHandler, parseBody } from '@payments/http';
 import type { ProjectsService } from './projects.service.js';
 
 /** Admin-token routes. Bodies of the provider routes carry secrets and are never logged. */
-export function projectsExternalController(service: ProjectsService): Router {
+export function projectsAdminController(service: ProjectsService): Router {
 	const router = Router();
+
+	router.get('/', asyncHandler(async (_req, res) => {
+		res.json(await service.list());
+	}));
+
+	router.get('/:projectId', asyncHandler(async (req, res) => {
+		res.json(await service.getDetail(req.params.projectId!));
+	}));
+
+	router.patch('/:projectId', asyncHandler(async (req, res) => {
+		const dto = parseBody(UpdateProjectDto, req.body);
+		res.json(await service.update(req.params.projectId!, dto));
+	}));
 
 	router.post('/', asyncHandler(async (req, res) => {
 		const dto = parseBody(CreateProjectDto, req.body);
